@@ -92,8 +92,14 @@ class TabOrder
         // invalid callable. Those warnings are harmless for our purpose (we only
         // need the tab KEYS), so we suppress non-fatal errors and swallow any
         // throwable for the duration of the call, then restore handling.
-        set_error_handler(static function () {
-            return true; // swallow notices/warnings raised during enumeration
+        set_error_handler(static function (int $errno): bool {
+            // Swallow ONLY non-fatal noise (warnings/notices/deprecations) that
+            // some tab-name renderers emit when called outside the display flow.
+            // Anything else falls through to PHP's normal handler.
+            return (bool) ($errno & (
+                E_WARNING | E_NOTICE | E_USER_WARNING | E_USER_NOTICE
+                | E_DEPRECATED | E_USER_DEPRECATED | E_STRICT
+            ));
         });
         try {
             $raw = $item->defineAllTabs();

@@ -1,6 +1,7 @@
 # Files/folders excluded from the GLPI plugin release tarball.
 .git
 .gitignore
+.gitattributes
 .glpiignore
 .github
 .idea
@@ -14,6 +15,7 @@ Thumbs.db
 *-LITO-*
 dist
 build
+.build
 node_modules
 tests
 phpunit.xml*

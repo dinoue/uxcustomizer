@@ -48,6 +48,13 @@ foreach ($p in $ignore) {
     }
 }
 
+# ALWAYS exclude the staging + output dirs, even if .glpiignore doesn't list
+# them. The staging dir (.build) lives INSIDE $PSScriptRoot, so without this
+# robocopy /E copies it into itself recursively (.build/<plugin>/.build/...)
+# until it hangs/fails. Pass absolute paths so /XD matches exactly.
+$xd += $work       # .build
+$xd += $dist       # dist
+
 $rcArgs = @($PSScriptRoot, $stage, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NP') + (@('/XD') + $xd) + (@('/XF') + $xf)
 & robocopy @rcArgs | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "robocopy failed with code $LASTEXITCODE" }
