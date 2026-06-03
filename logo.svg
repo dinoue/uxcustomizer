@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="UX Customizer">
+  <title>UX Customizer</title>
+  <!-- Rounded badge in TC Transcontinental brand blue -->
+  <rect x="4" y="4" width="120" height="120" rx="24" fill="#008fd5"/>
+  <!-- Three adjustment sliders (customization) in white -->
+  <g stroke="#ffffff" stroke-width="7" stroke-linecap="round">
+    <line x1="30" y1="42" x2="98" y2="42"/>
+    <line x1="30" y1="64" x2="98" y2="64"/>
+    <line x1="30" y1="86" x2="98" y2="86"/>
+  </g>
+  <g fill="#ffffff" stroke="#199ad9" stroke-width="4">
+    <circle cx="80" cy="42" r="10"/>
+    <circle cx="48" cy="64" r="10"/>
+    <circle cx="88" cy="86" r="10"/>
+  </g>
+</svg>
