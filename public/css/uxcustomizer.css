@@ -1,0 +1,26 @@
+/*
+ * UX Customizer — config-page styles only (drag handle + status text).
+ * Layout/colors come from GLPI's bundled Tabler/Bootstrap.
+ */
+
+.uxc-handle {
+    cursor: grab;
+    color: var(--tblr-secondary, #6c757d);
+}
+.uxc-item--chosen .uxc-handle { cursor: grabbing; }
+.uxc-menu-item, .uxc-tab-item { user-select: none; }
+
+/* Hidden tab in the config list: greyed + struck through (still listed). */
+.uxc-tab-hidden .uxc-tab-label {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+.uxc-item--ghost  { opacity: 0.4; }
+.uxc-item--chosen { background: var(--tblr-active-bg, #f1f5f9); }
+
+.uxc-status { font-size: 0.875rem; }
+.uxc-status--info    { color: var(--tblr-secondary, #6c757d); }
+.uxc-status--success { color: var(--tblr-success, #2fb344); }
+.uxc-status--error   { color: var(--tblr-danger, #d63939); }
+
+.uxc-hex { font-size: 0.85rem; }

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+   <name>UX Customizer</name>
+   <key>uxcustomizer</key>
+   <state>stable</state>
+
+   <logo>https://raw.githubusercontent.com/bacus99/GLPI_UXCustomizer/master/logo.svg</logo>
+
+   <description>
+      <short>
+         <en><![CDATA[Super-admin UI customization for GLPI: menu order, color palette, and more.]]></en>
+         <fr><![CDATA[Personnalisation de l'interface GLPI pour super-administrateurs : ordre du menu, palette de couleurs, et plus.]]></fr>
+      </short>
+      <long>
+         <en><![CDATA[
+UX Customizer bundles super-admin interface customizations for GLPI 11 as independently toggleable modules.<br /><br />
+<strong>Modules:</strong><br />
+- <strong>Menu Order</strong> — drag-and-drop reorder of the left navigation menu, saved per profile. Uses the official redefine_menus hook; new plugins always appear at the bottom.<br />
+- <strong>Color Palette</strong> — define a custom color theme that users can select in My Settings (it does not override their choice); installs as a native GLPI palette.<br />
+- <strong>Tab Order</strong> (planned) — reorder the tabs on asset detail pages per itemtype.<br /><br />
+Each module can be enabled or disabled independently. CSRF-compliant, PSR-4 autoloaded, GLPI 11 native.
+         ]]></en>
+         <fr><![CDATA[
+UX Customizer regroupe des personnalisations de l'interface GLPI 11 pour super-administrateurs sous forme de modules activables indépendamment.<br /><br />
+<strong>Modules :</strong><br />
+- <strong>Ordre du menu</strong> — réorganisation par glisser-déposer du menu de navigation, enregistrée par profil. Utilise le hook officiel redefine_menus ; les nouveaux plugins apparaissent toujours en bas.<br />
+- <strong>Palette de couleurs</strong> — définit un thème de couleurs personnalisé que les utilisateurs peuvent sélectionner dans Mes préférences (sans écraser leur choix) ; installé comme une palette GLPI native.<br />
+- <strong>Ordre des onglets</strong> (prévu) — réorganisation des onglets des fiches d'inventaire par type.<br /><br />
+Chaque module est activable indépendamment. Conforme CSRF, chargement PSR-4, compatible GLPI 11.
+         ]]></fr>
+      </long>
+   </description>
+
+   <homepage>https://github.com/bacus99/GLPI_UXCustomizer</homepage>
+   <download>https://github.com/bacus99/GLPI_UXCustomizer/releases</download>
+   <issues>https://github.com/bacus99/GLPI_UXCustomizer/issues</issues>
+   <readme>https://github.com/bacus99/GLPI_UXCustomizer/blob/master/README.md</readme>
+
+   <authors>
+      <author>Christian Bernard</author>
+   </authors>
+
+   <versions>
+      <version>
+         <num>1.0.0</num>
+         <compatibility>~11.0.0</compatibility>
+         <download_url>https://github.com/bacus99/GLPI_UXCustomizer/releases/download/1.0.0/glpi-uxcustomizer-1.0.0.tar.bz2</download_url>
+      </version>
+   </versions>
+
+   <langs>
+      <lang>en_GB</lang>
+      <lang>fr_FR</lang>
+   </langs>
+
+   <license>GPL-3.0-or-later</license>
+
+   <category>administration</category>
+
+   <tags>
+      <en>
+         <tag>ui</tag>
+         <tag>menu</tag>
+         <tag>theme</tag>
+         <tag>colors</tag>
+         <tag>customization</tag>
+      </en>
+      <fr>
+         <tag>interface</tag>
+         <tag>menu</tag>
+         <tag>thème</tag>
+         <tag>couleurs</tag>
+         <tag>personnalisation</tag>
+      </fr>
+   </tags>
+
+   <screenshots>
+      <!-- Add real screenshots once captured. -->
+   </screenshots>
+</root>

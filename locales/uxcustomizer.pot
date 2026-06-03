@@ -1,0 +1,128 @@
+# UX Customizer - GLPI Plugin
+# Copyright (C) 2026 Christian Bernard
+# This file is distributed under the same license as the UX Customizer plugin.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: UX Customizer 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/bacus99/GLPI_UXCustomizer/issues\n"
+"POT-Creation-Date: 2026-06-01 00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "UX Customizer"
+msgstr ""
+
+msgid "General"
+msgstr ""
+
+msgid "Menu Order"
+msgstr ""
+
+msgid "Color Palette"
+msgstr ""
+
+msgid "Enable or disable each customization module."
+msgstr ""
+
+msgid "Reorder the left navigation menu per profile."
+msgstr ""
+
+msgid "Override GLPI theme colors with a custom palette."
+msgstr ""
+
+msgid "Modules updated."
+msgstr ""
+
+msgid "The Menu Order module is disabled (see General)."
+msgstr ""
+
+msgid "Drag the handle to reorder the left sidebar for the selected profile. Changes save instantly. New items appear at the bottom."
+msgstr ""
+
+msgid "Profile"
+msgstr ""
+
+msgid "Drag to reorder"
+msgstr ""
+
+msgid "Reset menu order for this profile?"
+msgstr ""
+
+msgid "Reset to default"
+msgstr ""
+
+msgid "The Color Palette module is disabled (see General)."
+msgstr ""
+
+msgid "This adds a selectable theme to GLPI — it does NOT override anyone's choice. After saving, each user picks it under their avatar → My Settings → Color palette. Set the site default in Setup → General."
+msgstr ""
+
+msgid "Palette name"
+msgstr ""
+
+msgid "Also generate a matching dark theme"
+msgstr ""
+
+msgid "Theme keys: %s and %s (each max 20 chars — GLPI stores the choice in a char(20) column)."
+msgstr ""
+
+msgid "Primary color (buttons, links, active)"
+msgstr ""
+
+msgid "Accent (hover / active highlight)"
+msgstr ""
+
+msgid "Page background"
+msgstr ""
+
+msgid "Sidebar background"
+msgstr ""
+
+msgid "Sidebar text"
+msgstr ""
+
+msgid "Saving…"
+msgstr ""
+
+msgid "Saved"
+msgstr ""
+
+msgid "Save failed:"
+msgstr ""
+
+# ── Tab Order module ──
+msgid "Tab Order"
+msgstr ""
+
+msgid "Reorder the tabs on asset detail pages (Computer, Printer, …)."
+msgstr ""
+
+msgid "Add a selectable custom color theme."
+msgstr ""
+
+msgid "The Tab Order module is disabled (see General)."
+msgstr ""
+
+msgid "Drag to reorder the tabs shown on this asset type's detail pages. Applies to all users. New tabs (e.g. from future plugins) appear at the bottom."
+msgstr ""
+
+msgid "Asset type"
+msgstr ""
+
+msgid "No tabs found for this asset type."
+msgstr ""
+
+msgid "Reset tab order for this asset type?"
+msgstr ""
+
+msgid "Drag to reorder. Use the eye icon to hide a tab from the asset page (hidden tabs stay listed here, greyed out). Reset restores GLPI's default order and shows all tabs."
+msgstr ""
+
+msgid "Hide / show this tab"
+msgstr ""

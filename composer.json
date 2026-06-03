@@ -1,0 +1,21 @@
+{
+    "name": "bacus99/glpi-uxcustomizer",
+    "description": "GLPI 11 plugin: super-admin UI customization — menu order, color palette, and more (modular).",
+    "type": "glpi-plugin",
+    "license": "GPL-3.0-or-later",
+    "homepage": "https://github.com/bacus99/GLPI_UXCustomizer",
+    "authors": [
+        {
+            "name": "Christian Bernard",
+            "homepage": "https://github.com/bacus99"
+        }
+    ],
+    "require": {
+        "php": ">=8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "GlpiPlugin\\Uxcustomizer\\": "src/"
+        }
+    }
+}

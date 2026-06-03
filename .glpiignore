@@ -1,0 +1,25 @@
+# Files/folders excluded from the GLPI plugin release tarball.
+.git
+.gitignore
+.glpiignore
+.github
+.idea
+.vscode
+.claude
+.editorconfig
+*.swp
+*~
+.DS_Store
+Thumbs.db
+*-LITO-*
+dist
+build
+node_modules
+tests
+phpunit.xml*
+phpcs.xml*
+phpstan.neon*
+*.tar.bz2
+*.tar.gz
+*.zip
+CLAUDE.md
