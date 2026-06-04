@@ -25,3 +25,4 @@ phpstan.neon*
 *.tar.gz
 *.zip
 CLAUDE.md
+RELEASE_NOTES*.md
