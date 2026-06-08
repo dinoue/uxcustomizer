@@ -7,13 +7,14 @@
  * toggleable modules:
  *   - Menu Order    : reorder the left navigation menu per profile (redefine_menus).
  *   - Color Palette : add a selectable GLPI theme (SCSS file in GLPI_THEMES_DIR).
- *   - Tab Order     : (planned) reorder item-form tabs per itemtype (client-side).
+ *   - Tab Order     : reorder + hide item-form tabs per itemtype (client-side).
  *
  * @license   GPL-3.0-or-later
  */
 
 use Glpi\Plugin\Hooks;
 use GlpiPlugin\Uxcustomizer\Config;
+use GlpiPlugin\Uxcustomizer\Menu;
 use GlpiPlugin\Uxcustomizer\MenuOrder;
 
 define('PLUGIN_UXCUSTOMIZER_VERSION',          '1.0.0');
@@ -28,6 +29,10 @@ function plugin_init_uxcustomizer(): void
 
     // Config page (wrench icon on Setup > Plugins). Enforces config UPDATE itself.
     $PLUGIN_HOOKS['config_page']['uxcustomizer'] = 'front/config.php';
+
+    // Navigation entry under Setup → UX Customizer (the 'config' top-level menu).
+    // Points at front/config.php via Menu::getMenuContent().
+    $PLUGIN_HOOKS['menu_toadd']['uxcustomizer'] = ['config' => Menu::class];
 
     // Module hooks are registered only when the module is enabled. Reading the
     // config here touches the DB during early boot, so it's wrapped defensively

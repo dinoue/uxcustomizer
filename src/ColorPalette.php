@@ -21,8 +21,10 @@ namespace GlpiPlugin\Uxcustomizer;
 class ColorPalette
 {
     /**
-     * Default colors: TC Transcontinental brand, verified from the live
-     * stylesheets at tctranscontinental.com (themes/custom/tctranscontinental):
+     * Default colors. The values happen to match the TC Transcontinental brand
+     * (verified from tctranscontinental.com), but the default palette NAME is the
+     * generic "Custom" — this is a public-catalog plugin, so it must not ship an
+     * org-specific default theme name. Admins rename + recolor as they like.
      *   primary    #008fd5  brand blue — buttons (.btn-CTA), active tabs, body links (30×)
      *   accent     #199ad9  hover/active highlight — menu .is-active, social icons
      *   body_bg    #f5f5f5  page background (body) — light theme only
@@ -37,7 +39,7 @@ class ColorPalette
         'sidebar_fg' => '#ffffff',
     ];
 
-    public const DEFAULT_NAME = 'TC Transcontinental';
+    public const DEFAULT_NAME = 'Custom';
 
     /** Body/surface base for the dark variant ($is-dark handles the rest). */
     public const DARK_BODY_BG = '#15171c';
