@@ -217,6 +217,49 @@ msgstr ""
 msgid "No additional details."
 msgstr ""
 
+# ── Lifecycle / retention + Hardware + Activity ──
+msgid "Lifecycle"
+msgstr ""
+
+msgid "Hardware"
+msgstr ""
+
+msgid "Retention"
+msgstr ""
+
+msgid "Retirement"
+msgstr ""
+
+msgid "Lifetime"
+msgstr ""
+
+msgid "Recent activity"
+msgstr ""
+
+msgid "updated"
+msgstr ""
+
+msgid "Overdue by %d months"
+msgstr ""
+
+msgid "%1$d y %2$d m left"
+msgstr ""
+
+msgid "%d months left"
+msgstr ""
+
+msgid "Retention policy saved."
+msgstr ""
+
+msgid "Set how many years each Computer type is kept before replacement. The Computer Dashboard uses this with the purchase date (Management tab) to show a retirement date. Leave a type blank to use the default."
+msgstr ""
+
+msgid "Default retention (years)"
+msgstr ""
+
+msgid "Per Computer type (optional override)"
+msgstr ""
+
 msgid "Software summary"
 msgstr ""
 

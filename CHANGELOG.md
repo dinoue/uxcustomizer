@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-08
+
+### Added
+- **Asset retention policy** — new **Lifecycle** config tab to set retention years per Computer type (e.g. Laptop 5y, Server 7y) with a default. The Computer Dashboard uses it with the purchase date (Infocom / Management tab) to show a **retirement date** and time remaining (or "overdue").
+- **Lifecycle card** on the dashboard — purchase date, warranty end (from `glpi_infocoms`), retention, computed retirement + status pill.
+- **Hardware summary card** — model, processor, memory (Σ), disk (Σ) from native inventory device tables.
+- **Recent activity timeline** — last changes from `glpi_logs` (date / user / change).
+
+### Changed
+- Dashboard polish: status dots on security cards, card-title icons, tidier headers, timeline + status-pill styling (all scoped to `.uxc-ci-detail`).
+
 ## [1.1.2] - 2026-06-08
 
 ### Fixed

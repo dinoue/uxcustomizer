@@ -69,6 +69,35 @@ $num     = static fn($v) => $v === null ? '—' : (int) $v;
     </div>
 
     <div class="uxc-card">
+      <div class="uxc-card-title"><i class="ti ti-cpu me-1"></i><?= __('Hardware', 'uxcustomizer') ?></div>
+      <dl class="uxc-kv">
+        <dt><?= __('Model') ?></dt><dd><?= $h($data['hardware']['model']) ?></dd>
+        <dt><?= __('Processor') ?></dt><dd><?= $h($data['hardware']['cpu']) ?></dd>
+        <dt><?= __('Memory') ?></dt><dd><?= $h($data['hardware']['ram']) ?></dd>
+        <dt><?= __('Hard drive') ?></dt><dd><?= $h($data['hardware']['disk']) ?></dd>
+      </dl>
+    </div>
+
+    <div class="uxc-card">
+      <div class="uxc-card-title"><i class="ti ti-recycle me-1"></i><?= __('Lifecycle', 'uxcustomizer') ?></div>
+      <dl class="uxc-kv">
+        <dt><?= __('Purchase date') ?></dt><dd><?= $fmtDate($data['lifecycle']['buy_date']) ?></dd>
+        <dt><?= __('Warranty') ?></dt><dd><?php
+          $wm = $data['lifecycle']['warranty_months'];
+          if ($wm === -1)                                 { echo $h(__('Lifetime', 'uxcustomizer')); }
+          elseif (!empty($data['lifecycle']['warranty_end'])) { echo $fmtDate($data['lifecycle']['warranty_end']); }
+          elseif (!empty($wm))                            { echo (int) $wm . ' ' . __('months'); }
+          else                                            { echo '—'; }
+        ?></dd>
+        <dt><?= __('Retention', 'uxcustomizer') ?></dt><dd><?= (int) $data['lifecycle']['retention_years'] ?> <?= __('years') ?></dd>
+        <dt><?= __('Retirement', 'uxcustomizer') ?></dt><dd><?= $fmtDate($data['lifecycle']['retire_date']) ?></dd>
+      </dl>
+      <?php if (!empty($data['lifecycle']['remaining'])): ?>
+        <div class="uxc-life-status <?= $data['lifecycle']['overdue'] ? 'uxc-life-overdue' : 'uxc-life-ok' ?>"><?= $h($data['lifecycle']['remaining']) ?></div>
+      <?php endif; ?>
+    </div>
+
+    <div class="uxc-card">
       <div class="uxc-card-title"><i class="ti ti-info-circle me-1"></i><?= __('Details', 'uxcustomizer') ?></div>
       <?php if (!empty($data['custom_fields'])): ?>
         <dl class="uxc-kv">
@@ -109,4 +138,20 @@ $num     = static fn($v) => $v === null ? '—' : (int) $v;
     </div>
 
   </div>
+
+  <!-- Recent activity timeline -->
+  <?php if (!empty($data['activity'])): ?>
+  <div class="uxc-card uxc-activity">
+    <div class="uxc-card-title"><i class="ti ti-history me-1"></i><?= __('Recent activity', 'uxcustomizer') ?></div>
+    <ul class="uxc-timeline">
+      <?php foreach ($data['activity'] as $a): ?>
+        <li>
+          <span class="uxc-tl-date"><?= $fmtDate($a['date']) ?></span>
+          <?php if ($a['who'] !== ''): ?><span class="uxc-tl-who"><?= $h($a['who']) ?></span><?php endif; ?>
+          <span class="uxc-tl-text"><?= $h(mb_strimwidth((string) $a['text'], 0, 80, '…')) ?></span>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  </div>
+  <?php endif; ?>
 </div>

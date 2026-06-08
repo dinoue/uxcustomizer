@@ -216,6 +216,93 @@ class ComputerDashboard extends CommonGLPI
         if (!empty($f['comment']))               { $details[] = ['label' => __('Description'), 'value' => $f['comment']]; }
         if (!empty($f['last_inventory_update'])) { $details[] = ['label' => __('Last inventory', 'uxcustomizer'), 'value' => substr((string) $f['last_inventory_update'], 0, 16)]; }
 
+        // ── Lifecycle: purchase / warranty (Infocom) + retention policy ──
+        $buyDate = null; $warrantyMonths = null; $warrantyEnd = null;
+        try {
+            if ($DB->tableExists('glpi_infocoms')) {
+                foreach ($DB->request(['FROM' => 'glpi_infocoms', 'WHERE' => ['itemtype' => 'Computer', 'items_id' => $id], 'LIMIT' => 1]) as $ic) {
+                    $buyDate        = !empty($ic['buy_date']) ? $ic['buy_date'] : ($ic['use_date'] ?? null);
+                    $warrantyMonths = isset($ic['warranty_duration']) ? (int) $ic['warranty_duration'] : null;
+                    $wStart         = !empty($ic['warranty_date']) ? $ic['warranty_date'] : $buyDate;
+                    if (!empty($wStart) && $warrantyMonths !== null && $warrantyMonths > 0) {
+                        $warrantyEnd = date('Y-m-d', strtotime($wStart . ' +' . $warrantyMonths . ' months'));
+                    }
+                }
+            }
+        } catch (\Throwable $e) { /* ignore */ }
+
+        $retYears   = Lifecycle::yearsForType((int) ($f['computertypes_id'] ?? 0));
+        $retireDate = null; $remaining = null; $overdue = false;
+        if (!empty($buyDate) && $retYears > 0) {
+            $retireDate = date('Y-m-d', strtotime($buyDate . ' +' . $retYears . ' years'));
+            $months     = (int) floor((strtotime($retireDate) - time()) / (30 * 86400));
+            $overdue    = $months < 0;
+            if ($overdue) {
+                $remaining = sprintf(__('Overdue by %d months', 'uxcustomizer'), abs($months));
+            } else {
+                $y = intdiv($months, 12); $m = $months % 12;
+                $remaining = $y > 0 ? sprintf(__('%1$d y %2$d m left', 'uxcustomizer'), $y, $m)
+                                    : sprintf(__('%d months left', 'uxcustomizer'), $m);
+            }
+        }
+        $lifecycle = [
+            'buy_date'        => $buyDate,
+            'warranty_months' => $warrantyMonths,
+            'warranty_end'    => $warrantyEnd,
+            'retention_years' => $retYears,
+            'retire_date'     => $retireDate,
+            'remaining'       => $remaining,
+            'overdue'         => $overdue,
+        ];
+
+        // ── Hardware summary (model + native inventory devices) ──
+        $hw = ['model' => $name('glpi_computermodels', $f['computermodels_id'] ?? 0), 'cpu' => '—', 'ram' => '—', 'disk' => '—'];
+        try {
+            if ($DB->tableExists('glpi_items_deviceprocessors') && $DB->tableExists('glpi_deviceprocessors')) {
+                $n = 0; $cpu = '';
+                foreach ($DB->request([
+                    'SELECT'     => ['glpi_deviceprocessors.designation AS d'],
+                    'FROM'       => 'glpi_items_deviceprocessors',
+                    'INNER JOIN' => ['glpi_deviceprocessors' => ['ON' => ['glpi_items_deviceprocessors' => 'deviceprocessors_id', 'glpi_deviceprocessors' => 'id']]],
+                    'WHERE'      => ['glpi_items_deviceprocessors.itemtype' => 'Computer', 'glpi_items_deviceprocessors.items_id' => $id],
+                ]) as $r) { $n++; if ($cpu === '') { $cpu = (string) $r['d']; } }
+                if ($n > 0) { $hw['cpu'] = $cpu . ($n > 1 ? ' (×' . $n . ')' : ''); }
+            }
+            if ($DB->tableExists('glpi_items_devicememories')) {
+                $mb = 0;
+                foreach ($DB->request(['SELECT' => ['size'], 'FROM' => 'glpi_items_devicememories', 'WHERE' => ['itemtype' => 'Computer', 'items_id' => $id]]) as $r) { $mb += (int) $r['size']; }
+                if ($mb > 0) { $hw['ram'] = round($mb / 1024, 1) . ' GB'; }
+            }
+            if ($DB->tableExists('glpi_items_deviceharddrives')) {
+                $mb = 0;
+                foreach ($DB->request(['SELECT' => ['capacity'], 'FROM' => 'glpi_items_deviceharddrives', 'WHERE' => ['itemtype' => 'Computer', 'items_id' => $id]]) as $r) { $mb += (int) $r['capacity']; }
+                if ($mb > 0) { $hw['disk'] = $mb >= 1024 ? round($mb / 1024, 1) . ' GB' : $mb . ' MB'; }
+            }
+        } catch (\Throwable $e) { /* ignore */ }
+
+        // ── Activity (recent history from glpi_logs) ──
+        $activity = [];
+        try {
+            if ($DB->tableExists('glpi_logs')) {
+                foreach ($DB->request([
+                    'FROM'  => 'glpi_logs',
+                    'WHERE' => ['itemtype' => 'Computer', 'items_id' => $id],
+                    'ORDER' => ['date_mod DESC'],
+                    'LIMIT' => 6,
+                ]) as $l) {
+                    $who = trim((string) ($l['user_name'] ?? ''));
+                    $who = $who !== '' ? trim(preg_replace('/\s*\(\d+\)\s*$/', '', $who)) : '';
+                    $new = trim((string) ($l['new_value'] ?? ''));
+                    $old = trim((string) ($l['old_value'] ?? ''));
+                    $activity[] = [
+                        'date' => $l['date_mod'] ?? null,
+                        'who'  => $who,
+                        'text' => $new !== '' ? $new : ($old !== '' ? $old : __('updated', 'uxcustomizer')),
+                    ];
+                }
+            }
+        } catch (\Throwable $e) { /* ignore */ }
+
         return [
             // ── Top bar ──
             'name'        => $f['name'] ?? ('#' . $id),
@@ -255,6 +342,11 @@ class ComputerDashboard extends CommonGLPI
 
             // ── Contracts ──
             'contracts' => ['assigned' => $contractsLinked, 'type' => $cType, 'value' => $cValueStr],
+
+            // ── Lifecycle / Hardware / Activity ──
+            'lifecycle' => $lifecycle,
+            'hardware'  => $hw,
+            'activity'  => $activity,
         ];
     }
 }

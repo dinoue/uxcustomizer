@@ -11,6 +11,7 @@
 
 use GlpiPlugin\Uxcustomizer\ColorPalette;
 use GlpiPlugin\Uxcustomizer\Config;
+use GlpiPlugin\Uxcustomizer\Lifecycle;
 use GlpiPlugin\Uxcustomizer\MenuOrder;
 use GlpiPlugin\Uxcustomizer\TabOrder;
 
@@ -77,6 +78,7 @@ $tabs = [
     'menuorder' => ['ti-menu-2',        __('Menu Order', 'uxcustomizer')],
     'palette'   => ['ti-palette',       __('Color Palette', 'uxcustomizer')],
     'taborder'  => ['ti-layout-navbar', __('Tab Order', 'uxcustomizer')],
+    'lifecycle' => ['ti-recycle',       __('Lifecycle', 'uxcustomizer')],
 ];
 echo '<ul class="nav nav-tabs mt-3" role="tablist">';
 foreach ($tabs as $key => [$icon, $label]) {
@@ -286,6 +288,37 @@ if ($activeTab === 'taborder') {
             echo '</form>';
         }
     }
+}
+
+// ── Lifecycle: asset retention policy (years per Computer type) ──────────────
+if ($activeTab === 'lifecycle') {
+    $map = Lifecycle::getRetentionMap();
+
+    echo '<div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>'
+        . __('Set how many years each Computer type is kept before replacement. The Computer Dashboard uses this with the purchase date (Management tab) to show a retirement date. Leave a type blank to use the default.', 'uxcustomizer')
+        . '</div>';
+
+    echo '<form method="post" action="' . $rootDoc . '/plugins/uxcustomizer/ajax/lifecycle.php" style="max-width:520px">';
+    echo '<input type="hidden" name="_glpi_csrf_token" class="glpi-csrf-token" value="">';
+
+    // Default
+    echo '<div class="row g-2 align-items-center mb-2">';
+    echo '<div class="col"><label class="col-form-label fw-bold" for="retention_default">' . __('Default retention (years)', 'uxcustomizer') . '</label></div>';
+    echo '<div class="col-auto"><input type="number" min="1" max="50" class="form-control" id="retention_default" name="retention_default" value="' . (int) $map['default'] . '" style="width:90px"></div>';
+    echo '</div>';
+
+    echo '<hr><div class="text-muted small mb-2">' . __('Per Computer type (optional override)', 'uxcustomizer') . '</div>';
+    foreach ((new ComputerType())->find([], ['name ASC']) as $ct) {
+        $tid = (int) $ct['id'];
+        $val = isset($map[(string) $tid]) ? (int) $map[(string) $tid] : '';
+        echo '<div class="row g-2 align-items-center mb-2">';
+        echo '<div class="col"><label class="col-form-label" for="ret-' . $tid . '">' . htmlspecialchars($ct['name'], ENT_QUOTES, 'UTF-8') . '</label></div>';
+        echo '<div class="col-auto"><input type="number" min="1" max="50" class="form-control" id="ret-' . $tid . '" name="retention[' . $tid . ']" value="' . $val . '" placeholder="' . (int) $map['default'] . '" style="width:90px"></div>';
+        echo '</div>';
+    }
+
+    echo '<button type="submit" class="btn btn-primary mt-3"><i class="ti ti-device-floppy me-1"></i>' . __('Save') . '</button>';
+    echo '</form>';
 }
 
 echo '</div></div>'; // card-body / card
