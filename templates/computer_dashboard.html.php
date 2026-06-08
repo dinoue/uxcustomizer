@@ -76,6 +76,20 @@ $num     = static fn($v) => $v === null ? '—' : (int) $v;
         <dt><?= __('Memory') ?></dt><dd><?= $h($data['hardware']['ram']) ?></dd>
         <dt><?= __('Hard drive') ?></dt><dd><?= $h($data['hardware']['disk']) ?></dd>
       </dl>
+      <?php if (!empty($data['volumes'])): ?>
+        <div class="uxc-vol-head"><?= __('Volumes', 'uxcustomizer') ?></div>
+        <?php foreach ($data['volumes'] as $v): ?>
+          <div class="uxc-vol">
+            <div class="uxc-vol-top">
+              <span class="uxc-vol-mount"><?= $h($v['mount']) ?><?= $v['total_gb'] !== null ? ' · ' . $h($v['total_gb']) . ' GB' : '' ?></span>
+              <span class="uxc-vol-pct"><?= $v['used_pct'] === null ? '—' : (int) $v['used_pct'] . ' %' ?></span>
+            </div>
+            <?php if ($v['used_pct'] !== null): $p = (int) $v['used_pct']; $bar = $p >= 90 ? 'uxc-bar-bad' : ($p >= 75 ? 'uxc-bar-warn' : 'uxc-bar-ok'); ?>
+              <div class="uxc-bar"><div class="uxc-bar-fill <?= $bar ?>" style="width: <?= $p ?>%"></div></div>
+            <?php endif; ?>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
     </div>
 
     <div class="uxc-card">

@@ -280,6 +280,31 @@ class ComputerDashboard extends CommonGLPI
             }
         } catch (\Throwable $e) { /* ignore */ }
 
+        // ── Volumes (disk usage: mount point + used %) from glpi_items_disks ──
+        $volumes = [];
+        try {
+            if ($DB->tableExists('glpi_items_disks')) {
+                foreach ($DB->request([
+                    'SELECT' => ['name', 'mountpoint', 'totalsize', 'freesize'],
+                    'FROM'   => 'glpi_items_disks',
+                    'WHERE'  => ['itemtype' => 'Computer', 'items_id' => $id],
+                    'ORDER'  => ['mountpoint ASC'],
+                ]) as $d) {
+                    $total = (int) ($d['totalsize'] ?? 0);
+                    $free  = (int) ($d['freesize'] ?? 0);
+                    $pct   = $total > 0 ? (int) round((($total - $free) / $total) * 100) : null;
+                    if ($pct !== null) { $pct = max(0, min(100, $pct)); }   // clamp 0..100 (used in CSS width)
+                    $mount = trim((string) ($d['mountpoint'] ?? ''));
+                    if ($mount === '') { $mount = trim((string) ($d['name'] ?? '')); }
+                    $volumes[] = [
+                        'mount'    => $mount !== '' ? $mount : '—',
+                        'used_pct' => $pct,
+                        'total_gb' => $total > 0 ? round($total / 1024, 1) : null,
+                    ];
+                }
+            }
+        } catch (\Throwable $e) { /* ignore */ }
+
         // ── Activity (recent history from glpi_logs) ──
         $activity = [];
         try {
@@ -343,9 +368,10 @@ class ComputerDashboard extends CommonGLPI
             // ── Contracts ──
             'contracts' => ['assigned' => $contractsLinked, 'type' => $cType, 'value' => $cValueStr],
 
-            // ── Lifecycle / Hardware / Activity ──
+            // ── Lifecycle / Hardware / Volumes / Activity ──
             'lifecycle' => $lifecycle,
             'hardware'  => $hw,
+            'volumes'   => $volumes,
             'activity'  => $activity,
         ];
     }

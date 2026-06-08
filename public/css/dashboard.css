@@ -122,6 +122,22 @@
 .uxc-ci-detail .uxc-life-ok      { background: rgba(47, 179, 68, 0.15);  color: var(--uxc-ok); }
 .uxc-ci-detail .uxc-life-overdue { background: rgba(229, 84, 106, 0.15); color: var(--uxc-bad); }
 
+/* ── Volumes (disk usage bars) ── */
+.uxc-ci-detail .uxc-vol-head {
+    margin: 0.9rem 0 0.4rem; font-size: 0.8rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.03em; color: var(--uxc-muted);
+}
+.uxc-ci-detail .uxc-vol { margin-bottom: 0.6rem; }
+.uxc-ci-detail .uxc-vol-top { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem; }
+.uxc-ci-detail .uxc-vol-pct { color: var(--uxc-muted); }
+.uxc-ci-detail .uxc-bar {
+    height: 8px; border-radius: 999px; background: var(--uxc-card-2); overflow: hidden;
+}
+.uxc-ci-detail .uxc-bar-fill { height: 100%; border-radius: 999px; }
+.uxc-ci-detail .uxc-bar-ok   { background: var(--tblr-primary, #008fd5); }
+.uxc-ci-detail .uxc-bar-warn { background: var(--uxc-warn); }
+.uxc-ci-detail .uxc-bar-bad  { background: var(--uxc-bad); }
+
 /* ── Activity timeline ── */
 .uxc-ci-detail .uxc-activity { margin-top: 1rem; }
 .uxc-ci-detail .uxc-timeline { list-style: none; margin: 0; padding: 0; }

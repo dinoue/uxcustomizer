@@ -236,6 +236,9 @@ msgstr ""
 msgid "Recent activity"
 msgstr ""
 
+msgid "Volumes"
+msgstr ""
+
 msgid "updated"
 msgstr ""
 

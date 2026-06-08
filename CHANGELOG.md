@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-06-08
+
+### Added
+- **Volumes in the Hardware card** — mount point + used % with a usage bar (green / amber ≥75% / red ≥90%) and total size, from `glpi_items_disks`. Used % is clamped to an integer 0–100 before it drives the bar width (no CSS injection); mount points are HTML-escaped.
+
 ## [1.2.0] - 2026-06-08
 
 ### Added
