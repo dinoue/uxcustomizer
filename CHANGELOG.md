@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-06-08
+
+### Changed
+- **Health score now includes a lifecycle check** — when a retirement date is known, "past retirement" (overdue for replacement) counts as a failing check (so the total becomes "X of 6"; it stays "X of 5" when there's no purchase date / retention to evaluate).
+
 ## [1.2.2] - 2026-06-08
 
 ### Fixed

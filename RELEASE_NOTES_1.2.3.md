@@ -1,11 +1,12 @@
-# UX Customizer 1.2.2
+# UX Customizer 1.2.3
 
 Super-administrator UI customization for **GLPI 11**, as independently toggleable modules. Configure under **Setup → UX Customizer**.
 
-## Fixed in 1.2.2
-- Dashboard top-bar **CI name was hard to read** (light text on a light page). It now uses GLPI's own theme text colour — dark on light themes, light on dark themes.
+## Changed in 1.2.3
+- **Health score now factors lifecycle** — if the asset is past its retirement date (overdue for replacement), that counts as a failing health check.
 
 ## Recent highlights (1.2.x)
+- Dashboard top-bar CI name now uses GLPI's theme text colour (readable on light/dark).
 - **Volumes** in the Hardware card — mount point + used % bars.
 - **Asset retention policy** (Lifecycle tab) + dashboard retirement date.
 - **Hardware summary**, **Recent activity timeline**, dashboard polish.
@@ -20,7 +21,7 @@ Super-administrator UI customization for **GLPI 11**, as independently toggleabl
 - GLPI **11.0.0 – 11.0.x** · PHP **≥ 8.1** · MySQL 8.0+ / MariaDB 10.5+
 
 ## Installation
-1. Extract `glpi-uxcustomizer-1.2.2.tar.bz2` into `glpi/plugins/` — the folder **must** be named `uxcustomizer`.
+1. Extract `glpi-uxcustomizer-1.2.3.tar.bz2` into `glpi/plugins/` — the folder **must** be named `uxcustomizer`.
 2. **Setup → Plugins** → **Install** → **Enable**.
 3. Configure under **Setup → UX Customizer**.
 

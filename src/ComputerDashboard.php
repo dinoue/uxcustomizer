@@ -192,23 +192,6 @@ class ComputerDashboard extends CommonGLPI
         } catch (\Throwable $e) { /* keep defaults */ }
         $cValueStr = $cValue !== null ? ('$' . number_format($cValue, 2)) : null;
 
-        // ── Health: computed from the native signals above ──
-        $checks  = [
-            $conn['ok'] === true,    // agent seen recently
-            $av['ok'] === true,      // antivirus active
-            $avUpToDate,             // antivirus up to date
-            $tOpen === 0,            // no open tickets
-            $os['name'] !== '—',     // OS inventoried
-        ];
-        $passing = count(array_filter($checks));
-        $total   = count($checks);
-        $health  = [
-            'ok'     => $passing === $total ? true : ($passing >= $total - 1 ? null : false),
-            'label'  => $passing === $total ? __('Health: good', 'uxcustomizer')
-                      : ($passing >= $total - 1 ? __('Health: warning', 'uxcustomizer') : __('Health: critical', 'uxcustomizer')),
-            'detail' => sprintf(__('%1$d of %2$d checks passing', 'uxcustomizer'), $passing, $total),
-        ];
-
         // ── Details rows (native fields) ──
         $details = [];
         if (!empty($f['serial']))                { $details[] = ['label' => __('Serial'), 'value' => $f['serial']]; }
@@ -253,6 +236,26 @@ class ComputerDashboard extends CommonGLPI
             'retire_date'     => $retireDate,
             'remaining'       => $remaining,
             'overdue'         => $overdue,
+        ];
+
+        // ── Health: computed from the native signals (incl. lifecycle) ──
+        $checks = [
+            $conn['ok'] === true,    // agent seen recently
+            $av['ok'] === true,      // antivirus active
+            $avUpToDate,             // antivirus up to date
+            $tOpen === 0,            // no open tickets
+            $os['name'] !== '—',     // OS inventoried
+        ];
+        if ($retireDate !== null) {
+            $checks[] = !$overdue;   // within retention period (not overdue for replacement)
+        }
+        $passing = count(array_filter($checks));
+        $total   = count($checks);
+        $health  = [
+            'ok'     => $passing === $total ? true : ($passing >= $total - 1 ? null : false),
+            'label'  => $passing === $total ? __('Health: good', 'uxcustomizer')
+                      : ($passing >= $total - 1 ? __('Health: warning', 'uxcustomizer') : __('Health: critical', 'uxcustomizer')),
+            'detail' => sprintf(__('%1$d of %2$d checks passing', 'uxcustomizer'), $passing, $total),
         ];
 
         // ── Hardware summary (model + native inventory devices) ──
