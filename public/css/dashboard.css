@@ -34,8 +34,10 @@
     align-items: center; justify-content: space-between;
     margin-bottom: 1rem;
 }
-.uxc-ci-detail .uxc-ci-name { font-size: 1.4rem; font-weight: 600; }
-.uxc-ci-detail .uxc-ci-sub  { color: var(--uxc-muted); margin-left: 0.5rem; font-size: 0.9rem; }
+/* Top-bar text sits on GLPI's page background (not a dark card), so use GLPI's
+   own theme text colour — readable on both light and dark GLPI themes. */
+.uxc-ci-detail .uxc-ci-name { font-size: 1.4rem; font-weight: 700; color: var(--tblr-body-color, #1a2129); }
+.uxc-ci-detail .uxc-ci-sub  { color: var(--tblr-secondary-color, var(--tblr-secondary, #6c757d)); margin-left: 0.5rem; font-size: 0.9rem; }
 .uxc-ci-detail .uxc-topbar-badges { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 .uxc-ci-detail .uxc-badge {
     background: var(--uxc-card); border: 1px solid var(--uxc-line);
