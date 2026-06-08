@@ -17,31 +17,32 @@ use Session;
 
 class Menu extends CommonGLPI
 {
-    public static function getTypeName($nb = 0)
+    public static function getTypeName($nb = 0): string
     {
         return __('UX Customizer', 'uxcustomizer');
     }
 
-    public static function getMenuName()
+    public static function getMenuName(): string
     {
         return self::getTypeName();
     }
 
-    public static function getIcon()
+    public static function getIcon(): string
     {
         return 'ti ti-adjustments';
     }
 
     /**
      * Only super-admins (config UPDATE) see the entry; the page enforces the
-     * same right server-side regardless.
+     * same right server-side regardless. Signatures must match
+     * CommonGLPI::canView()/canCreate() which are declared `: bool`.
      */
-    public static function canView()
+    public static function canView(): bool
     {
-        return Session::haveRight('config', UPDATE);
+        return (bool) Session::haveRight('config', UPDATE);
     }
 
-    public static function canCreate()
+    public static function canCreate(): bool
     {
         return false;
     }

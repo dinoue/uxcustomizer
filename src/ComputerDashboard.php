@@ -37,7 +37,7 @@ class ComputerDashboard extends CommonGLPI
     }
 
     /** Render the dashboard card view inside the tab. */
-    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
+    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0): bool
     {
         if (!($item instanceof Computer) || $item->isNewItem()) {
             return false;
