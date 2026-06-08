@@ -37,6 +37,7 @@ function plugin_uxcustomizer_install(): bool
         $DB->insert($configs, ['key' => 'module_menuorder_enabled', 'value' => '1']);
         $DB->insert($configs, ['key' => 'module_palette_enabled',   'value' => '1']);
         $DB->insert($configs, ['key' => 'module_taborder_enabled',  'value' => '1']);
+        $DB->insert($configs, ['key' => 'module_dashboard_enabled', 'value' => '1']);
         // No palette row is seeded: ColorPalette::get() returns sensible defaults
         // until the admin saves one (which writes the SCSS theme file).
     }

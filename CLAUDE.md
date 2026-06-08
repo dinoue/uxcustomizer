@@ -25,7 +25,7 @@ Super-admin **UI customization** for GLPI 11, as independently toggleable module
 | **Menu Order** | `redefine_menus` hook (per-profile) | ✅ official API | done |
 | **Color Palette** | writes an SCSS palette into `GLPI_THEMES_DIR` (selectable theme) | ✅ uses GLPI's theme system | done |
 | **Tab Order** | client-side DOM reorder of item-form tabs (global, per itemtype) | ⚠️ no GLPI hook exists | done (needs live verify) |
-| **Computer Dashboard** | adds a "Dashboard" tab on the Computer form via `Plugin::registerClass(..., ['addtabon'])` | ✅ official API | in progress (lcornoc02) |
+| **Computer Dashboard** | adds a "Dashboard" tab on the Computer form via `Plugin::registerClass(..., ['addtabon'])` | ✅ official API | scaffolded — data TODOs from lcornoc02 |
 
 Toggles live in `glpi_plugin_uxcustomizer_configs` (`module_<name>_enabled`). `setup.php` only registers a module's hooks when it's enabled, wrapped in try/catch for early-boot safety.
 
@@ -40,7 +40,10 @@ uxcustomizer/
 │   ├── MenuOrder.php     redefineMenus()/getOrder()/saveOrder() (ported from taborder)
 │   ├── ColorPalette.php  get()/save()/reset()/removeThemeFile()/generateScss()
 │   ├── TabOrder.php      ITEMTYPES, getTabs()/getDisplayTabs()/getSettings()/saveSettings()
-│   └── Menu.php          Setup-menu entry (menu_toadd → getMenuContent → config.php)
+│   ├── Menu.php          Setup-menu entry (menu_toadd → getMenuContent → config.php)
+│   └── ComputerDashboard.php  Dashboard tab on Computer (getTabNameForItem/displayTabContentForItem + gatherData)
+├── templates/
+│   └── computer_dashboard.html.php   server-side card template (escaped; .uxc-ci-detail)
 ├── front/
 │   └── config.php        sectioned UI: General | Menu Order | Color Palette | Tab Order
 ├── ajax/
@@ -74,7 +77,7 @@ uxcustomizer/
   - **Defensive:** `keyOf()` tries `data-glpi-ajax-content`, `href`, `data-bs-target`, parsing `_glpi_tab`/`forcetab`. If keys can't be read it bails silently. `window.uxcTabDebug()` dumps the detected tabs in the console.
   - **Scope:** main asset types (Computer, Monitor, NetworkEquipment, Peripheral, Phone, Printer, Software, Rack, Enclosure, PDU, Cluster) — `TabOrder::ITEMTYPES`. Global (one order per itemtype, all users). **NOT yet verified on a live page** — the tab-rail DOM/key attributes are from source research, not a real render; `uxcTabDebug()` is there to confirm/adjust.
 
-- **Computer Dashboard** *(in progress — being built on `lcornoc02`)* — adds a **"Dashboard"** tab to the Computer form rendering a card-based CI overview. Files (per the lcornoc02 session): `src/ComputerDashboard.php`, `templates/computer_dashboard.html.php`, plus dashboard CSS/JS.
+- **Computer Dashboard** *(scaffolded here; data logic to port from `lcornoc02`)* — adds a **"Dashboard"** tab to the Computer form rendering a card-based CI overview. Files: `src/ComputerDashboard.php`, `templates/computer_dashboard.html.php`, `public/css/dashboard.css`. Module toggle `module_dashboard_enabled`; registered in `setup.php` only when enabled. `ComputerDashboard::gatherData()` pulls real values where trivial (name, status, location, owner, OS, software/tickets/contracts counts) and has clear `TODO(lcornoc02)` markers for the inventory/security-derived fields (connectivity, AV, firewall, health, uptime, unlicensed, custom fields, tags, contract type/value) — drop the lcornoc02 mapping there. The tab CSS is loaded by `displayTabContentForItem()` echoing a `<link>` to `public/css/dashboard.css` (loads on tab render), scoped under `.uxc-ci-detail`, dark by default with a light-theme fallback.
   - **Architecture decision (this supersedes a prior approach):** do **NOT** use a `pre_show_item` hook to replace the Computer form. Instead add a real tab — preserves all native GLPI tabs untouched. `ComputerDashboard` (a `CommonGLPI` subclass) implements `getTabNameForItem()` returning "Dashboard" and `displayTabContentForItem()` rendering the card view.
   - **⚠️ Registration correction (verified this session):** register the tab with `Plugin::registerClass(\GlpiPlugin\Uxcustomizer\ComputerDashboard::class, ['addtabon' => ['Computer']])` in `plugin_init_uxcustomizer()` — **not** `$PLUGIN_HOOKS['tabs']` (there is no `tabs` plugin hook; `addtabon` + registerClass is the GLPI 11 mechanism, as in tasksmanager's `TaskDashboard` on Ticket).
   - **⚠️ "First tab" caveat:** `addtabon` appends plugin tabs *after* core ones, and the numeric tab index only orders tabs *within* a class — it cannot force a plugin tab to be globally first. To actually make Dashboard the first tab, use **this plugin's own Tab Order module** to move `GlpiPlugin\Uxcustomizer\ComputerDashboard$1` (or whatever its key is) to the top. (Capture the real key with `uxcTabDebug()` once the tab renders.)

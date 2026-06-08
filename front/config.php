@@ -42,6 +42,7 @@ if (isset($_POST['save_modules'])) {
     }
 
     Config::setModuleEnabled('taborder', !empty($_POST['module_taborder_enabled']));
+    Config::setModuleEnabled('dashboard', !empty($_POST['module_dashboard_enabled']));
 
     Session::addMessageAfterRedirect(__('Modules updated.', 'uxcustomizer'), true, INFO);
     Html::redirect($CFG_GLPI['root_doc'] . '/plugins/uxcustomizer/front/config.php?tab=general');
@@ -97,6 +98,7 @@ if ($activeTab === 'general') {
         'menuorder' => [__('Menu Order', 'uxcustomizer'), __('Reorder the left navigation menu per profile.', 'uxcustomizer')],
         'palette'   => [__('Color Palette', 'uxcustomizer'), __('Add a selectable custom color theme.', 'uxcustomizer')],
         'taborder'  => [__('Tab Order', 'uxcustomizer'), __('Reorder the tabs on asset detail pages (Computer, Printer, …).', 'uxcustomizer')],
+        'dashboard' => [__('Computer Dashboard', 'uxcustomizer'), __('Add a card-based "Dashboard" tab to the Computer form.', 'uxcustomizer')],
     ] as $mod => [$label, $desc]) {
         $checked = Config::isModuleEnabled($mod) ? ' checked' : '';
         echo '<label class="form-check form-switch">';

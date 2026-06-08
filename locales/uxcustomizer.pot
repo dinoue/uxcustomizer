@@ -126,3 +126,73 @@ msgstr ""
 
 msgid "Hide / show this tab"
 msgstr ""
+
+# ── Computer Dashboard module ──
+msgid "Dashboard"
+msgstr ""
+
+msgid "Computer Dashboard"
+msgstr ""
+
+msgid "Add a card-based \"Dashboard\" tab to the Computer form."
+msgstr ""
+
+msgid "Updated"
+msgstr ""
+
+msgid "Owner"
+msgstr ""
+
+msgid "Connectivity"
+msgstr ""
+
+msgid "Antivirus"
+msgstr ""
+
+msgid "Firewall"
+msgstr ""
+
+msgid "Health"
+msgstr ""
+
+msgid "No agent data"
+msgstr ""
+
+msgid "Software summary"
+msgstr ""
+
+msgid "Installed"
+msgstr ""
+
+msgid "Unlicensed"
+msgstr ""
+
+msgid "Uptime"
+msgstr ""
+
+msgid "OS"
+msgstr ""
+
+msgid "Build"
+msgstr ""
+
+msgid "OS install date"
+msgstr ""
+
+msgid "Details"
+msgstr ""
+
+msgid "No custom fields mapped yet."
+msgstr ""
+
+msgid "Tickets"
+msgstr ""
+
+msgid "Linked"
+msgstr ""
+
+msgid "Contracts"
+msgstr ""
+
+msgid "Assigned"
+msgstr ""

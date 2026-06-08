@@ -13,6 +13,7 @@
  */
 
 use Glpi\Plugin\Hooks;
+use GlpiPlugin\Uxcustomizer\ComputerDashboard;
 use GlpiPlugin\Uxcustomizer\Config;
 use GlpiPlugin\Uxcustomizer\Menu;
 use GlpiPlugin\Uxcustomizer\MenuOrder;
@@ -54,6 +55,13 @@ function plugin_init_uxcustomizer(): void
         // the rendered .nav-tabs to the saved per-itemtype order (client-side).
         if (Config::isModuleEnabled('taborder')) {
             $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['uxcustomizer'] = ['public/js/tabreorder.js'];
+        }
+
+        // Computer Dashboard — adds a "Dashboard" tab to the Computer form.
+        // addtabon + registerClass is the GLPI 11 tab mechanism (NOT a 'tabs'
+        // hook). The tab lands after core tabs; use Tab Order to move it first.
+        if (Config::isModuleEnabled('dashboard')) {
+            Plugin::registerClass(ComputerDashboard::class, ['addtabon' => ['Computer']]);
         }
     } catch (\Throwable $e) {
         // Config unavailable during early boot / install — skip module hooks.
