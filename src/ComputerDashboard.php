@@ -101,13 +101,119 @@ class ComputerDashboard extends CommonGLPI
             $os['install_date'] = $row['install_date'] ?? null;
         }
 
-        // Counts from existing relation tables.
         $softwareInstalled = (int) countElementsInTable('glpi_items_softwareversions',
             ['itemtype' => 'Computer', 'items_id' => $id]);
-        $ticketsLinked = (int) countElementsInTable('glpi_items_tickets',
-            ['itemtype' => 'Computer', 'items_id' => $id]);
-        $contractsLinked = (int) countElementsInTable('glpi_contracts_items',
-            ['itemtype' => 'Computer', 'items_id' => $id]);
+
+        // ── Connectivity: native GLPI inventory agent (glpi_agents) ──
+        $conn = ['ok' => null, 'label' => __('Connectivity', 'uxcustomizer'), 'detail' => __('No agent data', 'uxcustomizer')];
+        try {
+            if ($DB->tableExists('glpi_agents')) {
+                foreach ($DB->request([
+                    'FROM'  => 'glpi_agents',
+                    'WHERE' => ['itemtype' => 'Computer', 'items_id' => $id],
+                    'ORDER' => ['last_contact DESC'],
+                    'LIMIT' => 1,
+                ]) as $a) {
+                    $last = $a['last_contact'] ?? null;
+                    $ver  = trim((string) ($a['version'] ?? ''));
+                    if (!empty($last) && $last !== 'NULL') {
+                        $days = (int) floor((time() - strtotime((string) $last)) / 86400);
+                        $conn['ok']    = $days <= 2;
+                        $conn['label'] = $conn['ok'] ? __('Connectivity online', 'uxcustomizer') : __('Connectivity offline', 'uxcustomizer');
+                        $seen = $days <= 0 ? __('today', 'uxcustomizer') : sprintf(_n('%d day ago', '%d days ago', $days, 'uxcustomizer'), $days);
+                        $conn['detail'] = trim(($ver !== '' ? __('Agent', 'uxcustomizer') . ' ' . $ver . ' — ' : '') . __('last seen', 'uxcustomizer') . ' ' . $seen);
+                    } else {
+                        $conn['detail'] = __('Agent present, never reported', 'uxcustomizer');
+                    }
+                }
+            }
+        } catch (\Throwable $e) { /* keep placeholder */ }
+
+        // ── Antivirus: native inventory (glpi_items_antiviruses) ──
+        $av = ['ok' => null, 'label' => __('Antivirus', 'uxcustomizer'), 'detail' => __('No antivirus reported', 'uxcustomizer')];
+        $avUpToDate = false;
+        try {
+            if ($DB->tableExists('glpi_items_antiviruses')) {
+                foreach ($DB->request([
+                    'FROM'  => 'glpi_items_antiviruses',
+                    'WHERE' => ['itemtype' => 'Computer', 'items_id' => $id],
+                    'ORDER' => ['is_active DESC'],
+                    'LIMIT' => 1,
+                ]) as $row) {
+                    $active      = !empty($row['is_active']);
+                    $avUpToDate  = !empty($row['is_uptodate']);
+                    $av['ok']    = $active;
+                    $av['label'] = $active ? __('Antivirus enabled', 'uxcustomizer') : __('Antivirus disabled', 'uxcustomizer');
+                    $nm          = trim((string) ($row['name'] ?? ''));
+                    $av['detail'] = $nm !== '' ? $nm : '—';
+                }
+            }
+        } catch (\Throwable $e) { /* keep placeholder */ }
+
+        // ── Firewall: no native GLPI source — needs an inventory/agent feed ──
+        $firewall = ['ok' => null, 'label' => __('Firewall', 'uxcustomizer'), 'detail' => __('No data source', 'uxcustomizer')];
+
+        // ── Tickets: breakdown by status (join glpi_tickets) ──
+        $ticketsLinked = (int) countElementsInTable('glpi_items_tickets', ['itemtype' => 'Computer', 'items_id' => $id]);
+        $tOpen = 0; $tPending = 0;
+        try {
+            foreach ($DB->request([
+                'SELECT'     => ['glpi_tickets.status AS status'],
+                'FROM'       => 'glpi_items_tickets',
+                'INNER JOIN' => ['glpi_tickets' => ['ON' => ['glpi_items_tickets' => 'tickets_id', 'glpi_tickets' => 'id']]],
+                'WHERE'      => ['glpi_items_tickets.itemtype' => 'Computer', 'glpi_items_tickets.items_id' => $id],
+            ]) as $t) {
+                $s = (int) $t['status'];
+                if (in_array($s, [1, 2, 3, 4], true)) { $tOpen++; }   // new / assigned / planned / waiting
+                if ($s === 4) { $tPending++; }                         // waiting
+            }
+        } catch (\Throwable $e) { $tOpen = null; $tPending = null; }
+
+        // ── Contracts: type + summed cost ──
+        $contractsLinked = (int) countElementsInTable('glpi_contracts_items', ['itemtype' => 'Computer', 'items_id' => $id]);
+        $cType = '—'; $cValue = null;
+        try {
+            foreach ($DB->request([
+                'SELECT'     => ['glpi_contracts.id AS cid', 'glpi_contracts.contracttypes_id AS ctype'],
+                'FROM'       => 'glpi_contracts_items',
+                'INNER JOIN' => ['glpi_contracts' => ['ON' => ['glpi_contracts_items' => 'contracts_id', 'glpi_contracts' => 'id']]],
+                'WHERE'      => ['glpi_contracts_items.itemtype' => 'Computer', 'glpi_contracts_items.items_id' => $id],
+                'ORDER'      => ['glpi_contracts.id DESC'],
+                'LIMIT'      => 1,
+            ]) as $row) {
+                $cType = $name('glpi_contracttypes', $row['ctype']);
+                if ($DB->tableExists('glpi_contractcosts')) {
+                    foreach ($DB->request(['SELECT' => ['cost'], 'FROM' => 'glpi_contractcosts', 'WHERE' => ['contracts_id' => $row['cid']]]) as $cc) {
+                        $cValue = (float) ($cValue ?? 0) + (float) $cc['cost'];
+                    }
+                }
+            }
+        } catch (\Throwable $e) { /* keep defaults */ }
+        $cValueStr = $cValue !== null ? ('$' . number_format($cValue, 2)) : null;
+
+        // ── Health: computed from the native signals above ──
+        $checks  = [
+            $conn['ok'] === true,    // agent seen recently
+            $av['ok'] === true,      // antivirus active
+            $avUpToDate,             // antivirus up to date
+            $tOpen === 0,            // no open tickets
+            $os['name'] !== '—',     // OS inventoried
+        ];
+        $passing = count(array_filter($checks));
+        $total   = count($checks);
+        $health  = [
+            'ok'     => $passing === $total ? true : ($passing >= $total - 1 ? null : false),
+            'label'  => $passing === $total ? __('Health: good', 'uxcustomizer')
+                      : ($passing >= $total - 1 ? __('Health: warning', 'uxcustomizer') : __('Health: critical', 'uxcustomizer')),
+            'detail' => sprintf(__('%1$d of %2$d checks passing', 'uxcustomizer'), $passing, $total),
+        ];
+
+        // ── Details rows (native fields) ──
+        $details = [];
+        if (!empty($f['serial']))                { $details[] = ['label' => __('Serial'), 'value' => $f['serial']]; }
+        if (!empty($f['otherserial']))           { $details[] = ['label' => __('Inventory number'), 'value' => $f['otherserial']]; }
+        if (!empty($f['comment']))               { $details[] = ['label' => __('Description'), 'value' => $f['comment']]; }
+        if (!empty($f['last_inventory_update'])) { $details[] = ['label' => __('Last inventory', 'uxcustomizer'), 'value' => substr((string) $f['last_inventory_update'], 0, 16)]; }
 
         return [
             // ── Top bar ──
@@ -119,39 +225,31 @@ class ComputerDashboard extends CommonGLPI
             'owner'       => $owner,
             'edit_url'    => Computer::getFormURLWithID($id),
 
-            // ── Security cards ── TODO(lcornoc02): wire real inventory/agent data
-            'connectivity' => ['ok' => null, 'label' => __('Connectivity', 'uxcustomizer'), 'detail' => __('No agent data', 'uxcustomizer')],
-            'antivirus'    => ['ok' => null, 'label' => __('Antivirus', 'uxcustomizer'),    'detail' => '—'],
-            'firewall'     => ['ok' => null, 'label' => __('Firewall', 'uxcustomizer'),     'detail' => '—'],
-            'health'       => ['ok' => null, 'label' => __('Health', 'uxcustomizer'),       'detail' => '—'],
+            // ── Security cards (native data; firewall needs an external feed) ──
+            'connectivity' => $conn,
+            'antivirus'    => $av,
+            'firewall'     => $firewall,
+            'health'       => $health,
 
-            // ── Software summary ──
+            // ── Software summary ── (unlicensed/uptime not available natively)
             'software' => [
                 'installed'    => $softwareInstalled,
-                'unlicensed'   => null,   // TODO(lcornoc02)
-                'uptime'       => null,   // TODO(lcornoc02)
+                'unlicensed'   => null,
+                'uptime'       => null,
                 'os'           => $os['name'],
                 'build'        => $os['version'],
                 'install_date' => $os['install_date'],
             ],
 
-            // ── Details / custom fields / tags ── TODO(lcornoc02)
-            'custom_fields' => [],   // [ ['label'=>..,'value'=>..], ... ]
-            'tags'          => [],   // [ 'all-computers', 'windows', ... ]
+            // ── Details / tags ── (tags come from a plugin; not native)
+            'custom_fields' => $details,
+            'tags'          => [],
 
             // ── Tickets ──
-            'tickets' => [
-                'linked'  => $ticketsLinked,
-                'open'    => null,   // TODO(lcornoc02): breakdown by status
-                'pending' => null,
-            ],
+            'tickets' => ['linked' => $ticketsLinked, 'open' => $tOpen, 'pending' => $tPending],
 
             // ── Contracts ──
-            'contracts' => [
-                'assigned' => $contractsLinked,
-                'type'     => '—',   // TODO(lcornoc02)
-                'value'    => null,  // TODO(lcornoc02)
-            ],
+            'contracts' => ['assigned' => $contractsLinked, 'type' => $cType, 'value' => $cValueStr],
         ];
     }
 }

@@ -158,6 +158,56 @@ msgstr ""
 msgid "No agent data"
 msgstr ""
 
+msgid "Connectivity online"
+msgstr ""
+
+msgid "Connectivity offline"
+msgstr ""
+
+msgid "Agent"
+msgstr ""
+
+msgid "last seen"
+msgstr ""
+
+msgid "today"
+msgstr ""
+
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Agent present, never reported"
+msgstr ""
+
+msgid "Antivirus enabled"
+msgstr ""
+
+msgid "Antivirus disabled"
+msgstr ""
+
+msgid "No antivirus reported"
+msgstr ""
+
+msgid "No data source"
+msgstr ""
+
+msgid "Health: good"
+msgstr ""
+
+msgid "Health: warning"
+msgstr ""
+
+msgid "Health: critical"
+msgstr ""
+
+msgid "%1$d of %2$d checks passing"
+msgstr ""
+
+msgid "Last inventory"
+msgstr ""
+
 msgid "Software summary"
 msgstr ""
 
