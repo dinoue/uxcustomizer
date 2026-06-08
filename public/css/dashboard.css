@@ -59,6 +59,27 @@
     border-radius: 12px; padding: 1rem 1.1rem;
 }
 .uxc-ci-detail .uxc-card-title { font-weight: 600; margin-bottom: 0.75rem; }
+.uxc-ci-detail .uxc-card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+.uxc-ci-detail .uxc-card-head .uxc-card-title { margin-bottom: 0; }
+
+/* Small button + inline link */
+.uxc-ci-detail .uxc-btn-sm { padding: 0.2rem 0.6rem; font-size: 0.8rem; }
+.uxc-ci-detail .uxc-link {
+    display: inline-block; margin-top: 0.6rem; font-size: 0.85rem;
+    color: var(--tblr-primary, #008fd5); text-decoration: none;
+}
+.uxc-ci-detail .uxc-link:hover { text-decoration: underline; }
+
+/* Status dot on the security cards */
+.uxc-ci-detail .uxc-dot {
+    display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+    margin-right: 0.45rem; background: var(--uxc-muted); vertical-align: middle;
+}
+.uxc-ci-detail .uxc-status-card.uxc-ok  .uxc-dot { background: var(--uxc-ok); }
+.uxc-ci-detail .uxc-status-card.uxc-bad .uxc-dot { background: var(--uxc-bad); }
 
 /* ── Security status cards ── */
 .uxc-ci-detail .uxc-status-card { border-left: 4px solid var(--uxc-muted); }

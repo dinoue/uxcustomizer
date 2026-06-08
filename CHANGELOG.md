@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-06-08
+
+### Fixed
+- **Antivirus card was always empty** — queried the wrong table. Corrected to GLPI 11's `glpi_itemantiviruses` (it had been `glpi_items_antiviruses`).
+
+### Added
+- **Tickets card: "New ticket"** button that opens a ticket pre-linked to the computer, plus a "View all tickets" link to the native Tickets tab.
+- Clearer dashboard template — status dots on the security cards, icons on card titles, tidier card headers.
+
 ## [1.1.1] - 2026-06-08
 
 ### Changed

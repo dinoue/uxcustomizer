@@ -82,10 +82,10 @@ Produces `dist/glpi-uxcustomizer-<VERSION>.tar.bz2`, excluding everything listed
 2. Push this repository to `github.com/bacus99/GLPI_UXCustomizer` (must be public).
 3. Tag and publish the build:
    ```bash
-   git tag -a 1.1.1 -m "Release 1.1.1"
+   git tag -a 1.1.2 -m "Release 1.1.2"
    git push --tags
-   gh release create 1.1.1 dist/glpi-uxcustomizer-1.1.1.tar.bz2 \
-       --title "1.1.1" --notes-from-tag
+   gh release create 1.1.2 dist/glpi-uxcustomizer-1.1.2.tar.bz2 \
+       --title "1.1.2" --notes-from-tag
    ```
 4. Verify every URL in `plugin.xml` resolves (logo, homepage, issues, readme, and the `download_url`).
 5. Submit to the [GLPI plugin catalog](https://plugins.glpi-project.org/) by opening a Pull Request to [pluginsGLPI/data](https://github.com/pluginsGLPI/data) adding your `plugin.xml` URL to `xml/plugins.json`.

@@ -70,7 +70,7 @@ class ComputerDashboard extends CommonGLPI
      */
     private static function gatherData(Computer $c): array
     {
-        global $DB;
+        global $DB, $CFG_GLPI;
 
         $id = (int) $c->getID();
         $f  = $c->fields;
@@ -133,9 +133,10 @@ class ComputerDashboard extends CommonGLPI
         $av = ['ok' => null, 'label' => __('Antivirus', 'uxcustomizer'), 'detail' => __('No antivirus reported', 'uxcustomizer')];
         $avUpToDate = false;
         try {
-            if ($DB->tableExists('glpi_items_antiviruses')) {
+            // GLPI 11 ItemAntivirus table is `glpi_itemantiviruses` (no "items_").
+            if ($DB->tableExists('glpi_itemantiviruses')) {
                 foreach ($DB->request([
-                    'FROM'  => 'glpi_items_antiviruses',
+                    'FROM'  => 'glpi_itemantiviruses',
                     'WHERE' => ['itemtype' => 'Computer', 'items_id' => $id],
                     'ORDER' => ['is_active DESC'],
                     'LIMIT' => 1,
@@ -224,6 +225,10 @@ class ComputerDashboard extends CommonGLPI
             'location'    => $name('glpi_locations', $f['locations_id'] ?? 0),
             'owner'       => $owner,
             'edit_url'    => Computer::getFormURLWithID($id),
+            // Create a new ticket already linked to this computer; and a link to
+            // the item's native Tickets tab.
+            'new_ticket_url' => \Ticket::getFormURL() . '?_add_fromitem=1&itemtype=Computer&items_id=' . $id,
+            'tickets_url'    => Computer::getFormURLWithID($id) . '&forcetab=Item_Ticket$1',
 
             // ── Security cards (native data; firewall needs an external feed) ──
             'connectivity' => $conn,

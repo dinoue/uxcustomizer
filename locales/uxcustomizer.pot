@@ -208,6 +208,15 @@ msgstr ""
 msgid "Last inventory"
 msgstr ""
 
+msgid "New ticket"
+msgstr ""
+
+msgid "View all tickets"
+msgstr ""
+
+msgid "No additional details."
+msgstr ""
+
 msgid "Software summary"
 msgstr ""
 
