@@ -46,10 +46,34 @@
     padding: 0.25rem 0.5rem;
 }
 
+/* Clickable pill: hover shows it's interactive; "off" state mutes the row. */
 .uxc-impact-legend-item {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 0.1rem 0.55rem;
+    color: inherit;
+    font: inherit;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+.uxc-impact-legend-item:hover {
+    background: var(--tblr-active-bg, #f1f5f9);
+    border-color: var(--uxc-impact-border);
+}
+
+.uxc-impact-legend-item--off {
+    opacity: 0.4;
+    text-decoration: line-through;
+}
+
+.uxc-impact-legend-item--off .uxc-impact-swatch {
+    filter: grayscale(0.7);
 }
 
 .uxc-impact-swatch {
@@ -58,6 +82,14 @@
     height: 12px;
     border-radius: 3px;
     border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* Active state for the Tree/Force layout toggle (Bootstrap "active" is for
+   nav items, not outline buttons — give it a clear visual). */
+.uxc-impact-toolbar .btn.active {
+    background: var(--tblr-primary, #206bc4);
+    color: #fff;
+    border-color: var(--tblr-primary, #206bc4);
 }
 
 /* ── Stage (canvas + side panel) ──────────────────────────────────────── */

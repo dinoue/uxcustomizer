@@ -8,8 +8,10 @@
  *   - Compounds (GLPI's named groups) start COLLAPSED — each shows as a single
  *     coloured node with "(N)" member count. Double-click expands.
  *   - Single node click → side panel (name, itemtype, "Open in GLPI" link).
- *   - Hover edges show the merged "N conn." count when collapsed.
- *   - Search box filters/highlights matching nodes.
+ *   - Cluster edges show merged "N conn." labels (Faddom-style).
+ *   - Legend pills filter visibility by itemtype.
+ *   - Toolbar toggles between force-directed and hierarchical (tree) layout.
+ *   - Search dims non-matching nodes (instead of selecting them).
  *
  * License: GPL-3.0-or-later
  */
@@ -43,6 +45,7 @@
     const btnExpandAll = root.querySelector('.uxc-impact-expand-all');
     const btnCollapseAll = root.querySelector('.uxc-impact-collapse-all');
     const btnFit = root.querySelector('.uxc-impact-fit');
+    const btnLayout = root.querySelector('.uxc-impact-layout');
 
     let network = null;
     let nodesDS = null;
@@ -52,6 +55,13 @@
     let compounds = []; // [{id,name,color,count}]
     let clusterIdByCompound = {}; // compoundId -> cluster id
     let typeStyles = {}; // itemtype -> {color, border, icon, label}
+
+    // ── Reactive UI state ────────────────────────────────────────────────────
+    const state = {
+        hiddenTypes: new Set(),  // itemtypes hidden via legend pills
+        hierarchical: false,     // tree vs force-directed
+        search: '',              // current search query (lowercase)
+    };
 
     function setStatus(msg, level) {
         if (!statusEl) return;
@@ -71,7 +81,9 @@
 
     /**
      * Build the legend from styles actually present in the dataset (so we
-     * don't show 12 itemtypes when only 3 are in the graph).
+     * don't show 12 itemtypes when only 3 are in the graph). Each item is
+     * a clickable pill: click toggles visibility of all raw nodes of that
+     * type (cluster nodes ignore the filter).
      */
     function buildLegend() {
         if (!legendEl) return;
@@ -80,16 +92,35 @@
         const items = [];
         present.forEach(it => {
             const style = typeStyles[it] || { color: '#9CA3AF', label: it };
+            const isOff = state.hiddenTypes.has(it);
+            const cls = 'uxc-impact-legend-item' + (isOff ? ' uxc-impact-legend-item--off' : '');
+            const title = isOff
+                ? t('show_type', 'Click to show')
+                : t('hide_type', 'Click to hide');
             items.push(
-                '<span class="uxc-impact-legend-item">' +
+                '<button type="button" class="' + cls + '" data-type="' +
+                    escapeHtml(it) + '" title="' + escapeHtml(title) + '">' +
                     '<span class="uxc-impact-swatch" style="background:' +
-                    escapeHtml(style.color) +
-                    '"></span>' +
+                    escapeHtml(style.color) + '"></span>' +
                     escapeHtml(style.label || it) +
-                '</span>'
+                '</button>'
             );
         });
         legendEl.innerHTML = items.join('');
+        // Wire click handlers.
+        legendEl.querySelectorAll('.uxc-impact-legend-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const it = btn.getAttribute('data-type');
+                if (!it) return;
+                if (state.hiddenTypes.has(it)) {
+                    state.hiddenTypes.delete(it);
+                } else {
+                    state.hiddenTypes.add(it);
+                }
+                applyTypeFilter();
+                buildLegend(); // refresh pill states
+            });
+        });
     }
 
     function buildVisNodes() {
@@ -115,6 +146,7 @@
                 shapeProperties: { borderRadius: 6 },
                 margin: 8,
                 widthConstraint: { minimum: 60, maximum: 180 },
+                opacity: 1,
                 // Custom payload for clustering / side panel:
                 _itemtype: n.itemtype,
                 _items_id: n.items_id,
@@ -221,8 +253,6 @@
         network = new vis.Network(canvas, { nodes: nodesDS, edges: edgesDS }, options);
 
         // Re-enable HTML tooltips by patching the rendered title to be a DOM node.
-        // vis-network shows the `title` field as a tooltip; passing an HTMLElement
-        // makes it render as HTML (string => plaintext).
         upgradeHtmlTooltips();
 
         network.once('stabilizationIterationsDone', () => {
@@ -250,9 +280,6 @@
     }
 
     function upgradeHtmlTooltips() {
-        // vis-network: when title is a string it renders as text; when it's an
-        // HTMLElement, it renders as HTML. We pre-converted server-side strings
-        // to "<div>…</div>" markup, so wrap each in a <template> here.
         nodesDS.forEach(n => {
             if (typeof n.title === 'string' && n.title.indexOf('<') !== -1) {
                 const wrap = document.createElement('div');
@@ -263,9 +290,14 @@
         });
     }
 
+    // ── Clustering ──────────────────────────────────────────────────────────
+
     function clusterAllCompounds() {
         clusterIdByCompound = {};
         compounds.forEach(c => clusterCompound(c.id));
+        // After all clusters are formed, label merged cluster edges with their
+        // base-edge count ("3 conn." Faddom-style).
+        labelAllClusterEdges();
     }
 
     function clusterCompound(compoundId) {
@@ -301,13 +333,14 @@
     function expandCluster(clusterId) {
         if (network && network.isCluster(clusterId)) {
             network.openCluster(clusterId);
-            // Clean reverse map
             for (const k of Object.keys(clusterIdByCompound)) {
                 if (clusterIdByCompound[k] === clusterId) {
                     delete clusterIdByCompound[k];
                     break;
                 }
             }
+            // Re-apply filter so newly-revealed raw nodes respect the legend.
+            applyTypeFilter();
         }
     }
 
@@ -316,10 +349,147 @@
             if (network.isCluster(id)) network.openCluster(id);
         });
         clusterIdByCompound = {};
+        applyTypeFilter();
     }
 
+    /**
+     * Walk every cluster edge in the network and label it with the number of
+     * base (real) edges it merges. Uses the public vis-network APIs
+     * getConnectedEdges() and getBaseEdges(); clustering.updateEdge() is also
+     * public though under-documented — wrapped in try/catch for safety.
+     */
+    function labelAllClusterEdges() {
+        if (!network) return;
+        Object.values(clusterIdByCompound).forEach(clusterId => {
+            if (!network.isCluster(clusterId)) return;
+            const eids = network.getConnectedEdges(clusterId);
+            eids.forEach(eid => {
+                try {
+                    const base = network.getBaseEdges(eid);
+                    if (base && base.length > 1) {
+                        network.clustering.updateEdge(eid, {
+                            label: base.length + ' ' + t('conn', 'conn.'),
+                            font: {
+                                size: 10,
+                                color: '#1f2937',
+                                background: 'rgba(255,255,255,0.92)',
+                                strokeWidth: 0,
+                                align: 'middle',
+                            },
+                        });
+                    }
+                } catch (e) {
+                    // edge may have just been removed/expanded — ignore
+                }
+            });
+        });
+    }
+
+    // ── Filtering by itemtype (legend pills) ────────────────────────────────
+
+    function applyTypeFilter() {
+        if (!nodesDS || !edgesDS) return;
+        const hidden = state.hiddenTypes;
+
+        // 1. Update raw node visibility.
+        const nodeUpdates = [];
+        nodesDS.forEach(n => {
+            const should = hidden.has(n._itemtype);
+            if ((n.hidden === true) !== should) {
+                nodeUpdates.push({ id: n.id, hidden: should });
+            }
+        });
+        if (nodeUpdates.length) nodesDS.update(nodeUpdates);
+
+        // 2. Hide edges that have a hidden endpoint.
+        const hiddenIds = new Set();
+        nodesDS.forEach(n => { if (n.hidden) hiddenIds.add(n.id); });
+        const edgeUpdates = [];
+        edgesDS.forEach(e => {
+            const should = hiddenIds.has(e.from) || hiddenIds.has(e.to);
+            if ((e.hidden === true) !== should) {
+                edgeUpdates.push({ id: e.id, hidden: should });
+            }
+        });
+        if (edgeUpdates.length) edgesDS.update(edgeUpdates);
+    }
+
+    // ── Layout toggle (Tree / Force) ────────────────────────────────────────
+
+    function setHierarchical(enable) {
+        if (!network) return;
+        state.hierarchical = !!enable;
+        network.setOptions({
+            layout: {
+                hierarchical: enable
+                    ? {
+                          direction: 'UD',          // Up → Down
+                          sortMethod: 'directed',
+                          levelSeparation: 140,
+                          nodeSpacing: 140,
+                          treeSpacing: 200,
+                          blockShifting: true,
+                          edgeMinimization: true,
+                          parentCentralization: true,
+                      }
+                    : false,
+            },
+            physics: { enabled: !enable },
+        });
+        // Tree layout repositions everything synchronously; fit to view.
+        try {
+            network.fit({ animation: { duration: 400 } });
+        } catch (e) {
+            // ignore
+        }
+        // Refresh button label.
+        if (btnLayout) {
+            btnLayout.classList.toggle('active', enable);
+            btnLayout.innerHTML = enable
+                ? '<i class="ti ti-circles-relation me-1"></i>' + t('layout_force', 'Force layout')
+                : '<i class="ti ti-binary-tree me-1"></i>' + t('layout_tree', 'Tree layout');
+        }
+        // Cluster edges keep their labels in tree layout; no action needed.
+    }
+
+    // ── Search (dim non-matching nodes) ─────────────────────────────────────
+
+    function applySearch(q) {
+        if (!nodesDS) return;
+        state.search = q || '';
+        const ql = state.search.toLowerCase();
+
+        if (!ql) {
+            // Reset opacity to 1 for any node that isn't already.
+            const updates = [];
+            nodesDS.forEach(n => {
+                if (n.opacity !== 1) updates.push({ id: n.id, opacity: 1 });
+            });
+            if (updates.length) nodesDS.update(updates);
+            return;
+        }
+
+        let firstMatch = null;
+        const updates = [];
+        nodesDS.forEach(n => {
+            const matches = (n._name || '').toLowerCase().indexOf(ql) !== -1;
+            const op = matches ? 1 : 0.15;
+            if (n.opacity !== op) updates.push({ id: n.id, opacity: op });
+            if (matches && !firstMatch) firstMatch = n.id;
+        });
+        if (updates.length) nodesDS.update(updates);
+        if (firstMatch) {
+            try {
+                network.focus(firstMatch, { scale: 1.0, animation: { duration: 250 } });
+            } catch (e) {
+                // node may be inside a collapsed cluster — ignore
+            }
+        }
+    }
+
+    // ── Event wiring ────────────────────────────────────────────────────────
+
     function bindEvents() {
-        // Double-click anywhere: expand the clicked cluster (if any).
         network.on('doubleClick', params => {
             if (params.nodes.length === 0) return;
             const id = params.nodes[0];
@@ -328,7 +498,6 @@
             }
         });
 
-        // Single click: show side-panel details.
         network.on('selectNode', params => {
             const id = params.nodes[0];
             if (network.isCluster(id)) {
@@ -350,20 +519,12 @@
         if (btnFit) {
             btnFit.addEventListener('click', () => network.fit({ animation: { duration: 400 } }));
         }
+        if (btnLayout) {
+            btnLayout.addEventListener('click', () => setHierarchical(!state.hierarchical));
+        }
         if (searchEl) {
             searchEl.addEventListener('input', () => {
-                const q = searchEl.value.trim().toLowerCase();
-                if (!q) {
-                    network.unselectAll();
-                    return;
-                }
-                const hits = nodesDS.get().filter(n =>
-                    (n._name || '').toLowerCase().indexOf(q) !== -1
-                );
-                if (hits.length) {
-                    network.selectNodes(hits.map(n => n.id));
-                    network.focus(hits[0].id, { scale: 1.0, animation: { duration: 300 } });
-                }
+                applySearch(searchEl.value.trim());
             });
         }
     }
@@ -414,8 +575,7 @@
         sidePanel.classList.add('uxc-impact-side--open');
     }
 
-    // The script is loaded at the end of the body, so DOMContentLoaded may
-    // already have fired. Handle both cases.
+    // Bottom-of-body script may load after DOMContentLoaded; handle both.
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {

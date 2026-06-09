@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-06-09
+
+### Added — Impact Map polish
+- **Edge merge labels** ("N conn.") — cluster edges now show how many real relations they merge, Faddom-style. Driven by vis-network's `getBaseEdges` API.
+- **Filter pills in the legend** — each itemtype swatch is now a clickable pill. Click to hide every raw node of that type (and its edges); click again to bring them back. Cluster nodes are unaffected so groups stay visible while you focus the rest. Hidden state visually mutes the pill (faded + line-through).
+- **Hierarchical layout toggle** — new toolbar button switches between force-directed and a top-down tree layout (`layout.hierarchical`, `sortMethod: 'directed'`). Great for "what depends on this DB" walks. Physics auto-disables in tree mode.
+- **Search dims non-matches** — typing in the search box now fades non-matching nodes to 15% opacity instead of just selecting them (Faddom behaviour). The first match still gets focused.
+
 ## [1.4.0] - 2026-06-09
 
 ### Added

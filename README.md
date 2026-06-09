@@ -56,7 +56,18 @@ Choose the colors (primary, accent, page background, sidebar background/text), n
 Pick an **asset type** (Computer, Monitor, Network equipment, Peripheral, Phone, Printer, Software, Rack, Enclosure, PDU, Cluster). Drag its tabs into the desired order, and use the **eye icon** to hide a tab from the asset page (hidden tabs stay listed here, greyed out, so you can restore them). The order applies **globally** to all users. **Reset** restores GLPI's default order and shows all tabs again.
 
 ### Impact Map
-Org-wide topology view (Faddom-style) of GLPI's native impact relations. Compounds (the named groups you create on an asset's Impact Analysis tab) start **collapsed** — each shows as a single colored node with the member count, e.g. "Management Servers (3)". Double-click a group to expand. Single-click any node to see details in the side panel with a link to open it in GLPI. Toolbar: search by name, **Collapse groups**, **Expand all**, **Fit**. Color-coded by itemtype (auto-legend). Capped at 750 nodes per render to keep the browser responsive. Read-only — never writes to GLPI's impact tables.
+Org-wide topology view (Faddom-style) of GLPI's native impact relations. Compounds (the named groups you create on an asset's Impact Analysis tab) start **collapsed** — each shows as a single colored node with the member count, e.g. "Management Servers (3)". Double-click a group to expand. Single-click any node to see details in the side panel with a link to open it in GLPI.
+
+**Toolbar:**
+- **Search** — type a name; non-matching nodes fade to 15% opacity (the first match is focused).
+- **Collapse groups / Expand all / Fit** — re-cluster, open all groups, or zoom to fit.
+- **Tree layout** — toggle between force-directed and a top-down hierarchical layout (great for "what depends on this DB" walks).
+
+**Legend pills** — color swatches double as on/off filters; click "Computer" to hide all Computer nodes (and their edges); click again to restore. Cluster nodes ignore the filter so groups stay visible.
+
+**Edge counts** — when a group is collapsed, edges from it to outside nodes show "N conn." labels so you can see how dense each link is, without expanding.
+
+Color-coded by itemtype with an auto-generated legend. Capped at 750 nodes per render to keep the browser responsive. Read-only — never writes to GLPI's impact tables.
 
 ## How it works
 
@@ -88,10 +99,10 @@ Produces `dist/glpi-uxcustomizer-<VERSION>.tar.bz2`, excluding everything listed
 2. Push this repository to `github.com/bacus99/GLPI_UXCustomizer` (must be public).
 3. Tag and publish the build:
    ```bash
-   git tag -a 1.4.0 -m "Release 1.4.0"
+   git tag -a 1.5.0 -m "Release 1.5.0"
    git push --tags
-   gh release create 1.4.0 dist/glpi-uxcustomizer-1.4.0.tar.bz2 \
-       --title "1.4.0" --notes-from-tag
+   gh release create 1.5.0 dist/glpi-uxcustomizer-1.5.0.tar.bz2 \
+       --title "1.5.0" --notes-from-tag
    ```
 4. Verify every URL in `plugin.xml` resolves (logo, homepage, issues, readme, and the `download_url`).
 5. Submit to the [GLPI plugin catalog](https://plugins.glpi-project.org/) by opening a Pull Request to [pluginsGLPI/data](https://github.com/pluginsGLPI/data) adding your `plugin.xml` URL to `xml/plugins.json`.

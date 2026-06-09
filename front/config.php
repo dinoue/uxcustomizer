@@ -334,7 +334,7 @@ if ($activeTab === 'impactmap') {
         echo '<div class="alert alert-warning">' . __('The Impact Map module is disabled (see General).', 'uxcustomizer') . '</div>';
     } else {
         echo '<div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>'
-            . __('Read-only org-wide view of GLPI\'s native impact relations. Compounds (named groups) start collapsed — double-click a group to expand. The graph is built from glpi_impactrelations / glpi_impactitems / glpi_impactcompounds (no new tables).', 'uxcustomizer')
+            . __('Read-only org-wide view of GLPI\'s native impact relations. Compounds (named groups) start collapsed — double-click a group to expand. Click a legend pill to filter that itemtype. Type in the search box to dim non-matching nodes. Toggle "Tree layout" to lay out as a directed waterfall. Built from glpi_impactrelations / glpi_impactitems / glpi_impactcompounds — no new tables.', 'uxcustomizer')
             . '</div>';
 
         echo '<div class="uxc-impact-page" id="uxc-impact">';
@@ -349,6 +349,9 @@ if ($activeTab === 'impactmap') {
             . '<i class="ti ti-arrows-maximize me-1"></i>' . __('Expand all', 'uxcustomizer') . '</button>';
         echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-fit">'
             . '<i class="ti ti-focus-2 me-1"></i>' . __('Fit', 'uxcustomizer') . '</button>';
+        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-layout"'
+            . ' title="' . htmlspecialchars(__('Toggle force-directed / tree layout', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
+            . '<i class="ti ti-binary-tree me-1"></i>' . __('Tree layout', 'uxcustomizer') . '</button>';
         echo '<span class="uxc-impact-status"></span>';
         echo '</div>';
 
@@ -414,6 +417,11 @@ if ($activeTab === 'impactmap' && Config::isModuleEnabled('impactmap')) {
             'members'      => __('Members', 'uxcustomizer'),
             'expand'       => __('Expand', 'uxcustomizer'),
             'open_in_glpi' => __('Open in GLPI', 'uxcustomizer'),
+            'conn'         => __('conn.', 'uxcustomizer'),
+            'layout_tree'  => __('Tree layout', 'uxcustomizer'),
+            'layout_force' => __('Force layout', 'uxcustomizer'),
+            'show_type'    => __('Click to show', 'uxcustomizer'),
+            'hide_type'    => __('Click to hide', 'uxcustomizer'),
         ],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>';
     echo '<script src="' . $asset('public/js/vis-network.min.js') . '"></script>';
