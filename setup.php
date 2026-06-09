@@ -15,10 +15,11 @@
 use Glpi\Plugin\Hooks;
 use GlpiPlugin\Uxcustomizer\ComputerDashboard;
 use GlpiPlugin\Uxcustomizer\Config;
+use GlpiPlugin\Uxcustomizer\ImpactMapTab;
 use GlpiPlugin\Uxcustomizer\Menu;
 use GlpiPlugin\Uxcustomizer\MenuOrder;
 
-define('PLUGIN_UXCUSTOMIZER_VERSION',          '1.5.0');
+define('PLUGIN_UXCUSTOMIZER_VERSION',          '1.6.0');
 define('PLUGIN_UXCUSTOMIZER_MIN_GLPI_VERSION', '11.0.0');
 define('PLUGIN_UXCUSTOMIZER_MAX_GLPI_VERSION', '11.0.99');
 
@@ -62,6 +63,14 @@ function plugin_init_uxcustomizer(): void
         // hook). The tab lands after core tabs; use Tab Order to move it first.
         if (Config::isModuleEnabled('dashboard')) {
             Plugin::registerClass(ComputerDashboard::class, ['addtabon' => ['Computer']]);
+        }
+
+        // Impact Map — adds an "Impact Map" tab to Computer and Appliance
+        // forms, coexisting with GLPI's native "Impact Analysis" tab. The new
+        // tab renders the same vis-network view as the config page, but
+        // scoped to the subgraph connected to the current asset.
+        if (Config::isModuleEnabled('impactmap')) {
+            Plugin::registerClass(ImpactMapTab::class, ['addtabon' => ImpactMapTab::ITEMTYPES]);
         }
     } catch (\Throwable $e) {
         // Config unavailable during early boot / install — skip module hooks.

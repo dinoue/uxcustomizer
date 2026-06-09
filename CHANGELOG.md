@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-06-09
+
+### Added
+- **Impact Map tab on assets** — the same vis-network topology view is now available as an additional tab on **Computer** and **Appliance** form pages, alongside GLPI's native "Impact Analysis" tab. The new tab is **scoped to the subgraph connected to the current asset** (BFS over impact relations), so you immediately see this CI's neighborhood with collapsible compounds, edge counts, filter pills, tree layout and search dim. Registered via `Plugin::registerClass(ImpactMapTab::class, addtabon=[Computer, Appliance])` — the tab is additive; the native Impact Analysis tab keeps working untouched. Use Tab Order to move it next to or above the native tab.
+
 ## [1.5.0] - 2026-06-09
 
 ### Added — Impact Map polish

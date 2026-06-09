@@ -16,7 +16,7 @@ Super-administrator **interface customization** for GLPI 11, organised as indepe
 | **Color Palette** | Define a custom color theme (primary, accent, page background, sidebar) and offer it — plus a matching **dark** variant — as a **selectable** palette. | Opt-in per **user** | Native GLPI theme (SCSS in the themes directory) |
 | **Tab Order** | Reorder **and hide/unhide** the tabs on asset detail pages (Computer, Monitor, Network equipment, Printer, Software…). | **Global** per itemtype | Client-side reorder of the rendered tab bar |
 | **Computer Dashboard** | Card-based "Dashboard" tab on the Computer form — hardware summary, volumes, lifecycle, tickets, contracts, recent activity. | Added to each Computer | `Plugin::registerClass(addtabon=Computer)` |
-| **Impact Map** | Org-wide topology view of GLPI's native impact relations, with **collapsible groups** (Faddom-style). Read-only — uses existing `glpi_impactrelations` / `glpi_impactitems` / `glpi_impactcompounds`. | Admin view | `vis-network` (bundled) reading existing tables |
+| **Impact Map** | Org-wide topology view of GLPI's native impact relations, with **collapsible groups** (Faddom-style). Also adds an **"Impact Map" tab on Computer and Appliance** forms, scoped to that asset's neighborhood. Read-only — uses existing `glpi_impactrelations` / `glpi_impactitems` / `glpi_impactcompounds`. | Admin view + on-asset tab | `vis-network` (bundled) reading existing tables |
 
 New items always append at the bottom — a freshly installed plugin's menu entry or asset tab never disrupts your saved order.
 
@@ -69,6 +69,8 @@ Org-wide topology view (Faddom-style) of GLPI's native impact relations. Compoun
 
 Color-coded by itemtype with an auto-generated legend. Capped at 750 nodes per render to keep the browser responsive. Read-only — never writes to GLPI's impact tables.
 
+**Also available as an on-asset tab** — Computer and Appliance forms get an "Impact Map" tab next to GLPI's native "Impact Analysis" tab. The on-asset version is **scoped to the subgraph connected to the current CI** (BFS from this item), so you immediately see the neighborhood without picking it from an org-wide view. The native Impact Analysis tab keeps working untouched. Use Tab Order to position the new tab where you want it.
+
 ## How it works
 
 - **Menu Order** registers a `redefine_menus` callback. GLPI renders the sidebar from the array this hook returns, so the plugin re-keys it into the saved per-profile order. It never mutates session state directly.
@@ -99,10 +101,10 @@ Produces `dist/glpi-uxcustomizer-<VERSION>.tar.bz2`, excluding everything listed
 2. Push this repository to `github.com/bacus99/GLPI_UXCustomizer` (must be public).
 3. Tag and publish the build:
    ```bash
-   git tag -a 1.5.0 -m "Release 1.5.0"
+   git tag -a 1.6.0 -m "Release 1.6.0"
    git push --tags
-   gh release create 1.5.0 dist/glpi-uxcustomizer-1.5.0.tar.bz2 \
-       --title "1.5.0" --notes-from-tag
+   gh release create 1.6.0 dist/glpi-uxcustomizer-1.6.0.tar.bz2 \
+       --title "1.6.0" --notes-from-tag
    ```
 4. Verify every URL in `plugin.xml` resolves (logo, homepage, issues, readme, and the `download_url`).
 5. Submit to the [GLPI plugin catalog](https://plugins.glpi-project.org/) by opening a Pull Request to [pluginsGLPI/data](https://github.com/pluginsGLPI/data) adding your `plugin.xml` URL to `xml/plugins.json`.
