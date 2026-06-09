@@ -18,6 +18,11 @@
 
     color: var(--uxc-fg);
     padding: 0.5rem 0 1rem;
+    /* Vertical rhythm: keep a clear gap between top-level blocks (top bar →
+       status cards → System info → Tickets/Contracts → Activity). */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 :root[data-bs-theme="light"] .uxc-ci-detail {
     --uxc-bg:     #f5f5f5;
@@ -50,7 +55,7 @@
 }
 
 /* ── Grid + cards ── */
-.uxc-ci-detail .uxc-grid { display: grid; gap: 1rem; margin-bottom: 1rem; }
+.uxc-ci-detail .uxc-grid { display: grid; gap: 1rem; /* outer spacing handled by .uxc-ci-detail flex gap */ }
 .uxc-ci-detail .uxc-grid-4 { grid-template-columns: repeat(4, 1fr); }
 .uxc-ci-detail .uxc-grid-3 { grid-template-columns: repeat(3, 1fr); }
 .uxc-ci-detail .uxc-grid-2 { grid-template-columns: repeat(2, 1fr); }
@@ -193,7 +198,7 @@
 .uxc-ci-detail .uxc-bar-bad  { background: var(--uxc-bad); }
 
 /* ── Activity timeline ── */
-.uxc-ci-detail .uxc-activity { margin-top: 1rem; }
+.uxc-ci-detail .uxc-activity { /* outer spacing handled by .uxc-ci-detail flex gap */ }
 .uxc-ci-detail .uxc-timeline { list-style: none; margin: 0; padding: 0; }
 .uxc-ci-detail .uxc-timeline li {
     display: flex; gap: 0.75rem; align-items: baseline;
