@@ -14,6 +14,7 @@ use GlpiPlugin\Uxcustomizer\Config;
 use GlpiPlugin\Uxcustomizer\Lifecycle;
 use GlpiPlugin\Uxcustomizer\MenuOrder;
 use GlpiPlugin\Uxcustomizer\TabOrder;
+use GlpiPlugin\Uxcustomizer\ImpactMap;
 
 include('../../../inc/includes.php');
 
@@ -44,6 +45,7 @@ if (isset($_POST['save_modules'])) {
 
     Config::setModuleEnabled('taborder', !empty($_POST['module_taborder_enabled']));
     Config::setModuleEnabled('dashboard', !empty($_POST['module_dashboard_enabled']));
+    Config::setModuleEnabled('impactmap', !empty($_POST['module_impactmap_enabled']));
 
     Session::addMessageAfterRedirect(__('Modules updated.', 'uxcustomizer'), true, INFO);
     Html::redirect($CFG_GLPI['root_doc'] . '/plugins/uxcustomizer/front/config.php?tab=general');
@@ -69,16 +71,20 @@ $asset = static function (string $rel) use ($rootDoc): string {
 };
 
 echo '<link rel="stylesheet" type="text/css" href="' . $asset('public/css/uxcustomizer.css') . '">';
+if ($activeTab === 'impactmap' && Config::isModuleEnabled('impactmap')) {
+    echo '<link rel="stylesheet" type="text/css" href="' . $asset('public/css/impactmap.css') . '">';
+}
 echo '<div class="container-fluid mt-3">';
 echo '<h2><i class="ti ti-adjustments me-2"></i>' . __('UX Customizer', 'uxcustomizer') . '</h2>';
 
 // ── Section tabs ─────────────────────────────────────────────────────────
 $tabs = [
-    'general'   => ['ti-settings',      __('General', 'uxcustomizer')],
-    'menuorder' => ['ti-menu-2',        __('Menu Order', 'uxcustomizer')],
-    'palette'   => ['ti-palette',       __('Color Palette', 'uxcustomizer')],
-    'taborder'  => ['ti-layout-navbar', __('Tab Order', 'uxcustomizer')],
-    'lifecycle' => ['ti-recycle',       __('Lifecycle', 'uxcustomizer')],
+    'general'   => ['ti-settings',         __('General', 'uxcustomizer')],
+    'menuorder' => ['ti-menu-2',           __('Menu Order', 'uxcustomizer')],
+    'palette'   => ['ti-palette',          __('Color Palette', 'uxcustomizer')],
+    'taborder'  => ['ti-layout-navbar',    __('Tab Order', 'uxcustomizer')],
+    'lifecycle' => ['ti-recycle',          __('Lifecycle', 'uxcustomizer')],
+    'impactmap' => ['ti-affiliate',        __('Impact Map', 'uxcustomizer')],
 ];
 echo '<ul class="nav nav-tabs mt-3" role="tablist">';
 foreach ($tabs as $key => [$icon, $label]) {
@@ -101,6 +107,7 @@ if ($activeTab === 'general') {
         'palette'   => [__('Color Palette', 'uxcustomizer'), __('Add a selectable custom color theme.', 'uxcustomizer')],
         'taborder'  => [__('Tab Order', 'uxcustomizer'), __('Reorder the tabs on asset detail pages (Computer, Printer, …).', 'uxcustomizer')],
         'dashboard' => [__('Computer Dashboard', 'uxcustomizer'), __('Add a card-based "Dashboard" tab to the Computer form.', 'uxcustomizer')],
+        'impactmap' => [__('Impact Map', 'uxcustomizer'), __('Org-wide impact topology with collapsible groups (vis-network).', 'uxcustomizer')],
     ] as $mod => [$label, $desc]) {
         $checked = Config::isModuleEnabled($mod) ? ' checked' : '';
         echo '<label class="form-check form-switch">';
@@ -321,6 +328,46 @@ if ($activeTab === 'lifecycle') {
     echo '</form>';
 }
 
+// ── Impact Map ──────────────────────────────────────────────────────────────
+if ($activeTab === 'impactmap') {
+    if (!Config::isModuleEnabled('impactmap')) {
+        echo '<div class="alert alert-warning">' . __('The Impact Map module is disabled (see General).', 'uxcustomizer') . '</div>';
+    } else {
+        echo '<div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>'
+            . __('Read-only org-wide view of GLPI\'s native impact relations. Compounds (named groups) start collapsed — double-click a group to expand. The graph is built from glpi_impactrelations / glpi_impactitems / glpi_impactcompounds (no new tables).', 'uxcustomizer')
+            . '</div>';
+
+        echo '<div class="uxc-impact-page" id="uxc-impact">';
+
+        // Toolbar
+        echo '<div class="uxc-impact-toolbar">';
+        echo '<input type="text" class="form-control form-control-sm uxc-impact-search"'
+            . ' placeholder="' . htmlspecialchars(__('Search node by name…', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">';
+        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-collapse-all">'
+            . '<i class="ti ti-arrows-minimize me-1"></i>' . __('Collapse groups', 'uxcustomizer') . '</button>';
+        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-expand-all">'
+            . '<i class="ti ti-arrows-maximize me-1"></i>' . __('Expand all', 'uxcustomizer') . '</button>';
+        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-fit">'
+            . '<i class="ti ti-focus-2 me-1"></i>' . __('Fit', 'uxcustomizer') . '</button>';
+        echo '<span class="uxc-impact-status"></span>';
+        echo '</div>';
+
+        // Legend (filled by JS)
+        echo '<div class="uxc-impact-legend"></div>';
+
+        // Stage
+        echo '<div class="uxc-impact-stage">';
+        echo '<div class="uxc-impact-canvas"></div>';
+        echo '<aside class="uxc-impact-side" aria-live="polite"></aside>';
+        echo '<div class="uxc-impact-empty" style="display:none"><div><i class="ti ti-affiliate-off mb-2" style="font-size:2rem"></i><br>'
+            . __('No impact relations found. Open any asset\'s Impact Analysis tab to start linking items.', 'uxcustomizer')
+            . '</div></div>';
+        echo '</div>';
+
+        echo '</div>'; // uxc-impact-page
+    }
+}
+
 echo '</div></div>'; // card-body / card
 echo '</div>';       // container
 
@@ -349,5 +396,28 @@ echo '<script src="' . $asset('public/js/Sortable.min.js') . '"></script>';
 echo '<script src="' . $asset('public/js/menuorder.js') . '"></script>';
 echo '<script src="' . $asset('public/js/palette.js') . '"></script>';
 echo '<script src="' . $asset('public/js/tabconfig.js') . '"></script>';
+
+// Impact Map (only when its tab is active). vis-network is bundled locally
+// (same reason as SortableJS — no CDN, GLPI doesn't expose a stable path).
+if ($activeTab === 'impactmap' && Config::isModuleEnabled('impactmap')) {
+    echo '<script>window.UxcImpactConfig = ' . json_encode([
+        'dataUrl' => $rootDoc . '/plugins/uxcustomizer/ajax/impactmap.php',
+        'i18n'    => [
+            'loading'      => __('Loading…', 'uxcustomizer'),
+            'failed'       => __('Failed to load:', 'uxcustomizer'),
+            'nodes'        => __('nodes', 'uxcustomizer'),
+            'relations'    => __('relations', 'uxcustomizer'),
+            'truncated'    => __('truncated to ', 'uxcustomizer'),
+            'type'         => __('Type', 'uxcustomizer'),
+            'id'           => __('ID', 'uxcustomizer'),
+            'group'        => __('Group', 'uxcustomizer'),
+            'members'      => __('Members', 'uxcustomizer'),
+            'expand'       => __('Expand', 'uxcustomizer'),
+            'open_in_glpi' => __('Open in GLPI', 'uxcustomizer'),
+        ],
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>';
+    echo '<script src="' . $asset('public/js/vis-network.min.js') . '"></script>';
+    echo '<script src="' . $asset('public/js/impactmap.js') . '"></script>';
+}
 
 Html::footer();

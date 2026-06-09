@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-06-09
+
+### Added
+- **Impact Map module** — new tab in the UX Customizer config page that renders an org-wide topology view of GLPI's native impact relations using **vis-network** (Faddom-style). Reads `glpi_impactrelations` / `glpi_impactitems` / `glpi_impactcompounds` directly — no new tables. Compounds (named groups) start **collapsed** as a single node showing the member count (e.g. "Management Servers (3)"); double-click expands. Single-click a node opens a side panel with type / id / "Open in GLPI" link. Color-coded by itemtype, automatic legend from nodes actually present, search/highlight box, expand-all / collapse-all / fit buttons. Capped at 750 nodes per render (truncation surfaced in the status line). vis-network is bundled locally (no CDN). New `module_impactmap_enabled` toggle in General.
+
 ## [1.3.5] - 2026-06-09
 
 ### Changed

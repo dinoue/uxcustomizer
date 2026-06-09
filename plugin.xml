@@ -17,7 +17,9 @@ UX Customizer bundles super-admin interface customizations for GLPI 11 as indepe
 <strong>Modules:</strong><br />
 - <strong>Menu Order</strong> — drag-and-drop reorder of the left navigation menu, saved per profile. Uses the official redefine_menus hook; new plugins always appear at the bottom.<br />
 - <strong>Color Palette</strong> — define a custom color theme that users can select in My Settings (it does not override their choice); installs as a native GLPI palette.<br />
-- <strong>Tab Order</strong> (planned) — reorder the tabs on asset detail pages per itemtype.<br /><br />
+- <strong>Tab Order</strong> — reorder and hide tabs on asset detail pages per itemtype.<br />
+- <strong>Computer Dashboard</strong> — card-based overview tab on the Computer form (hardware, health, lifecycle, tickets, contracts, activity).<br />
+- <strong>Impact Map</strong> — org-wide topology view of GLPI's native impact relations with collapsible groups, rendered with vis-network.<br /><br />
 Each module can be enabled or disabled independently. CSRF-compliant, PSR-4 autoloaded, GLPI 11 native.
          ]]></en>
          <fr><![CDATA[
@@ -25,7 +27,9 @@ UX Customizer regroupe des personnalisations de l'interface GLPI 11 pour super-a
 <strong>Modules :</strong><br />
 - <strong>Ordre du menu</strong> — réorganisation par glisser-déposer du menu de navigation, enregistrée par profil. Utilise le hook officiel redefine_menus ; les nouveaux plugins apparaissent toujours en bas.<br />
 - <strong>Palette de couleurs</strong> — définit un thème de couleurs personnalisé que les utilisateurs peuvent sélectionner dans Mes préférences (sans écraser leur choix) ; installé comme une palette GLPI native.<br />
-- <strong>Ordre des onglets</strong> (prévu) — réorganisation des onglets des fiches d'inventaire par type.<br /><br />
+- <strong>Ordre des onglets</strong> — réorganisation et masquage des onglets des fiches d'inventaire par type.<br />
+- <strong>Tableau de bord Ordinateur</strong> — onglet de synthèse cartes sur la fiche Ordinateur (matériel, santé, cycle de vie, tickets, contrats, activité).<br />
+- <strong>Carte d'impact</strong> — vue topologique des relations d'impact natives de GLPI avec groupes repliables, rendue avec vis-network.<br /><br />
 Chaque module est activable indépendamment. Conforme CSRF, chargement PSR-4, compatible GLPI 11.
          ]]></fr>
       </long>
@@ -41,6 +45,11 @@ Chaque module est activable indépendamment. Conforme CSRF, chargement PSR-4, co
    </authors>
 
    <versions>
+      <version>
+         <num>1.4.0</num>
+         <compatibility>~11.0.0</compatibility>
+         <download_url>https://github.com/bacus99/GLPI_UXCustomizer/releases/download/1.4.0/glpi-uxcustomizer-1.4.0.tar.bz2</download_url>
+      </version>
       <version>
          <num>1.3.5</num>
          <compatibility>~11.0.0</compatibility>
@@ -69,6 +78,8 @@ Chaque module est activable indépendamment. Conforme CSRF, chargement PSR-4, co
          <tag>theme</tag>
          <tag>colors</tag>
          <tag>customization</tag>
+         <tag>impact</tag>
+         <tag>topology</tag>
       </en>
       <fr>
          <tag>interface</tag>
@@ -76,6 +87,8 @@ Chaque module est activable indépendamment. Conforme CSRF, chargement PSR-4, co
          <tag>thème</tag>
          <tag>couleurs</tag>
          <tag>personnalisation</tag>
+         <tag>impact</tag>
+         <tag>topologie</tag>
       </fr>
    </tags>
 

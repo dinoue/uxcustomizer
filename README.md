@@ -15,6 +15,8 @@ Super-administrator **interface customization** for GLPI 11, organised as indepe
 | **Menu Order** | Drag-and-drop reorder of the left navigation menu (Assets, Assistance, Management, Tools, Administration, Setup…). | Per **profile** | `redefine_menus` hook (official GLPI API) |
 | **Color Palette** | Define a custom color theme (primary, accent, page background, sidebar) and offer it — plus a matching **dark** variant — as a **selectable** palette. | Opt-in per **user** | Native GLPI theme (SCSS in the themes directory) |
 | **Tab Order** | Reorder **and hide/unhide** the tabs on asset detail pages (Computer, Monitor, Network equipment, Printer, Software…). | **Global** per itemtype | Client-side reorder of the rendered tab bar |
+| **Computer Dashboard** | Card-based "Dashboard" tab on the Computer form — hardware summary, volumes, lifecycle, tickets, contracts, recent activity. | Added to each Computer | `Plugin::registerClass(addtabon=Computer)` |
+| **Impact Map** | Org-wide topology view of GLPI's native impact relations, with **collapsible groups** (Faddom-style). Read-only — uses existing `glpi_impactrelations` / `glpi_impactitems` / `glpi_impactcompounds`. | Admin view | `vis-network` (bundled) reading existing tables |
 
 New items always append at the bottom — a freshly installed plugin's menu entry or asset tab never disrupts your saved order.
 
@@ -53,11 +55,15 @@ Choose the colors (primary, accent, page background, sidebar background/text), n
 ### Tab Order
 Pick an **asset type** (Computer, Monitor, Network equipment, Peripheral, Phone, Printer, Software, Rack, Enclosure, PDU, Cluster). Drag its tabs into the desired order, and use the **eye icon** to hide a tab from the asset page (hidden tabs stay listed here, greyed out, so you can restore them). The order applies **globally** to all users. **Reset** restores GLPI's default order and shows all tabs again.
 
+### Impact Map
+Org-wide topology view (Faddom-style) of GLPI's native impact relations. Compounds (the named groups you create on an asset's Impact Analysis tab) start **collapsed** — each shows as a single colored node with the member count, e.g. "Management Servers (3)". Double-click a group to expand. Single-click any node to see details in the side panel with a link to open it in GLPI. Toolbar: search by name, **Collapse groups**, **Expand all**, **Fit**. Color-coded by itemtype (auto-legend). Capped at 750 nodes per render to keep the browser responsive. Read-only — never writes to GLPI's impact tables.
+
 ## How it works
 
 - **Menu Order** registers a `redefine_menus` callback. GLPI renders the sidebar from the array this hook returns, so the plugin re-keys it into the saved per-profile order. It never mutates session state directly.
 - **Color Palette** writes an SCSS palette file into GLPI's themes directory (`GLPI_THEMES_DIR`). GLPI discovers it automatically and lists it as a selectable theme — there is no plugin API to register a theme in code, so this is the supported, non-intrusive route.
 - **Tab Order** — GLPI 11 exposes no server hook to reorder item-form tabs, so a small script loaded on every page detects the asset type and reorders/hides the rendered Bootstrap tab bar (`#tabspanel`) according to the saved settings. It is DOM-based by necessity and degrades gracefully (does nothing if GLPI's markup changes).
+- **Impact Map** queries `glpi_impactrelations`, `glpi_impactitems` and `glpi_impactcompounds` directly (the same tables GLPI's per-asset Impact Analysis tab writes to) and renders the resulting graph with [vis-network](https://github.com/visjs/vis-network). It's read-only — saved compounds and relations remain managed from GLPI's native UI. vis-network is bundled inside the plugin (no CDN).
 
 ## Compatibility & limitations
 
@@ -82,10 +88,10 @@ Produces `dist/glpi-uxcustomizer-<VERSION>.tar.bz2`, excluding everything listed
 2. Push this repository to `github.com/bacus99/GLPI_UXCustomizer` (must be public).
 3. Tag and publish the build:
    ```bash
-   git tag -a 1.3.5 -m "Release 1.3.5"
+   git tag -a 1.4.0 -m "Release 1.4.0"
    git push --tags
-   gh release create 1.3.5 dist/glpi-uxcustomizer-1.3.5.tar.bz2 \
-       --title "1.3.5" --notes-from-tag
+   gh release create 1.4.0 dist/glpi-uxcustomizer-1.4.0.tar.bz2 \
+       --title "1.4.0" --notes-from-tag
    ```
 4. Verify every URL in `plugin.xml` resolves (logo, homepage, issues, readme, and the `download_url`).
 5. Submit to the [GLPI plugin catalog](https://plugins.glpi-project.org/) by opening a Pull Request to [pluginsGLPI/data](https://github.com/pluginsGLPI/data) adding your `plugin.xml` URL to `xml/plugins.json`.
