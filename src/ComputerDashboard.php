@@ -365,7 +365,10 @@ class ComputerDashboard extends CommonGLPI
             'status'      => $name('glpi_states', $f['states_id'] ?? 0),
             'location'    => $name('glpi_locations', $f['locations_id'] ?? 0),
             'owner'       => $owner,
-            'edit_url'    => Computer::getFormURLWithID($id),
+            // The "Edit" button on the dashboard sends the user to the main
+            // (form) tab. Without forcetab we'd reload the very URL we're on
+            // (Dashboard tab) and the page wouldn't appear to do anything.
+            'edit_url'    => Computer::getFormURLWithID($id) . '&forcetab=Computer$main',
             // Create a new ticket already linked to this computer; and a link to
             // the item's native Tickets tab.
             'new_ticket_url' => \Ticket::getFormURL() . '?_add_fromitem=1&itemtype=Computer&items_id=' . $id,

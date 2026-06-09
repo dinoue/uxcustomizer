@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-06-08
+
+### Fixed
+- **Dashboard "Edit" button did nothing** — it pointed at the same `computer.form.php?id=<id>` URL the Dashboard tab is already on, so clicking it appeared to do nothing. The button now forces `Computer$main` so it goes to the main (form) tab where you can edit fields.
+
 ## [1.3.0] - 2026-06-08
 
 ### Changed
