@@ -218,12 +218,11 @@ class ComputerDashboard extends CommonGLPI
         } catch (\Throwable $e) { /* keep defaults */ }
         $cValueStr = $cValue !== null ? ('$' . number_format($cValue, 2)) : null;
 
-        // ── Details rows (native fields) ──
-        $details = [];
-        if (!empty($f['serial']))                { $details[] = ['label' => __('Serial'), 'value' => $f['serial']]; }
-        if (!empty($f['otherserial']))           { $details[] = ['label' => __('Inventory number'), 'value' => $f['otherserial']]; }
-        if (!empty($f['comment']))               { $details[] = ['label' => __('Description'), 'value' => $f['comment']]; }
-        if (!empty($f['last_inventory_update'])) { $details[] = ['label' => __('Last inventory', 'uxcustomizer'), 'value' => substr((string) $f['last_inventory_update'], 0, 16)]; }
+        // Serial + Last inventory move under Hardware (no separate Details
+        // section). Description/Inventory number are dropped from the dashboard
+        // — they're still visible on GLPI's main form.
+        $serial         = !empty($f['serial']) ? (string) $f['serial'] : null;
+        $lastInventory  = !empty($f['last_inventory_update']) ? substr((string) $f['last_inventory_update'], 0, 16) : null;
 
         // ── Lifecycle: purchase / warranty (Infocom) + retention policy ──
         $buyDate = null; $warrantyMonths = null; $warrantyEnd = null;
@@ -285,7 +284,14 @@ class ComputerDashboard extends CommonGLPI
         ];
 
         // ── Hardware summary (model + native inventory devices) ──
-        $hw = ['model' => $name('glpi_computermodels', $f['computermodels_id'] ?? 0), 'cpu' => '—', 'ram' => '—', 'disk' => '—'];
+        $hw = [
+            'model'          => $name('glpi_computermodels', $f['computermodels_id'] ?? 0),
+            'cpu'            => '—',
+            'ram'            => '—',
+            'disk'           => '—',
+            'serial'         => $serial,
+            'last_inventory' => $lastInventory,
+        ];
         try {
             if ($DB->tableExists('glpi_items_deviceprocessors') && $DB->tableExists('glpi_deviceprocessors')) {
                 $n = 0; $cpu = '';
@@ -389,10 +395,6 @@ class ComputerDashboard extends CommonGLPI
                 'build'        => $os['version'],
                 'install_date' => $os['install_date'],
             ],
-
-            // ── Details / tags ── (tags come from a plugin; not native)
-            'custom_fields' => $details,
-            'tags'          => [],
 
             // ── Tickets ──
             'tickets' => ['linked' => $ticketsLinked, 'open' => $tOpen, 'pending' => $tPending],

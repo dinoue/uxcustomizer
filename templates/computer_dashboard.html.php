@@ -83,6 +83,12 @@ $num     = static fn($v) => $v === null ? '—' : (int) $v;
           <dt><?= __('Processor') ?></dt><dd><?= $h($data['hardware']['cpu']) ?></dd>
           <dt><?= __('Memory') ?></dt><dd><?= $h($data['hardware']['ram']) ?></dd>
           <dt><?= __('Hard drive') ?></dt><dd><?= $h($data['hardware']['disk']) ?></dd>
+          <?php if (!empty($data['hardware']['serial'])): ?>
+            <dt><?= __('Serial') ?></dt><dd><?= $h($data['hardware']['serial']) ?></dd>
+          <?php endif; ?>
+          <?php if (!empty($data['hardware']['last_inventory'])): ?>
+            <dt><?= __('Last inventory', 'uxcustomizer') ?></dt><dd><?= $fmtDate($data['hardware']['last_inventory']) ?></dd>
+          <?php endif; ?>
         </dl>
       </div>
 
@@ -130,21 +136,6 @@ $num     = static fn($v) => $v === null ? '—' : (int) $v;
       </div>
     <?php endif; ?>
 
-    <?php if (!empty($data['custom_fields']) || !empty($data['tags'])): ?>
-      <div class="uxc-subhead uxc-subhead-row"><i class="ti ti-info-circle me-1"></i><?= __('Details', 'uxcustomizer') ?></div>
-      <?php if (!empty($data['custom_fields'])): ?>
-        <dl class="uxc-kv uxc-kv-wide">
-          <?php foreach ($data['custom_fields'] as $cf): ?>
-            <dt><?= $h($cf['label']) ?></dt><dd><?= $h($cf['value']) ?></dd>
-          <?php endforeach; ?>
-        </dl>
-      <?php endif; ?>
-      <?php if (!empty($data['tags'])): ?>
-        <div class="uxc-tags">
-          <?php foreach ($data['tags'] as $tag): ?><span class="uxc-tag"><?= $h($tag) ?></span><?php endforeach; ?>
-        </div>
-      <?php endif; ?>
-    <?php endif; ?>
   </div>
 
   <!-- Tickets + Contracts side-by-side -->
