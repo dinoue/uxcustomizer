@@ -107,18 +107,24 @@ $num     = static fn($v) => $v === null ? '—' : (int) $v;
 
     </div>
 
-    <?php if (!empty($data['volumes'])): ?>
+    <?php
+    // Show only volumes with actual usage data; tiny or unknown volumes were
+    // creating big empty rows in the panel. Keeps the section compact.
+    $volsShown = array_values(array_filter($data['volumes'] ?? [], static function (array $v): bool {
+        return $v['used_pct'] !== null && (($v['total_gb'] ?? 0) >= 1);
+    }));
+    ?>
+    <?php if (!empty($volsShown)): ?>
       <div class="uxc-subhead uxc-subhead-row"><i class="ti ti-database me-1"></i><?= __('Volumes', 'uxcustomizer') ?></div>
-      <div class="uxc-grid uxc-grid-2">
-        <?php foreach ($data['volumes'] as $v): ?>
+      <div class="uxc-volumes">
+        <?php foreach ($volsShown as $v): ?>
           <div class="uxc-vol">
             <div class="uxc-vol-top">
               <span class="uxc-vol-mount"><?= $h($v['mount']) ?><?= $v['total_gb'] !== null ? ' · ' . $h($v['total_gb']) . ' GB' : '' ?></span>
-              <span class="uxc-vol-pct"><?= $v['used_pct'] === null ? '—' : (int) $v['used_pct'] . ' %' ?></span>
+              <span class="uxc-vol-pct"><?= (int) $v['used_pct'] . ' %' ?></span>
             </div>
-            <?php if ($v['used_pct'] !== null): $p = (int) $v['used_pct']; $bar = $p >= 90 ? 'uxc-bar-bad' : ($p >= 75 ? 'uxc-bar-warn' : 'uxc-bar-ok'); ?>
-              <div class="uxc-bar"><div class="uxc-bar-fill <?= $bar ?>" style="width: <?= $p ?>%"></div></div>
-            <?php endif; ?>
+            <?php $p = (int) $v['used_pct']; $bar = $p >= 90 ? 'uxc-bar-bad' : ($p >= 75 ? 'uxc-bar-warn' : 'uxc-bar-ok'); ?>
+            <div class="uxc-bar"><div class="uxc-bar-fill <?= $bar ?>" style="width: <?= $p ?>%"></div></div>
           </div>
         <?php endforeach; ?>
       </div>

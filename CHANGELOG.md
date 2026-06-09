@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-06-09
+
+### Changed
+- **System info layout breathes** — more space between the Software / Hardware / Lifecycle columns, the column divider has real padding around it, kv lists have a proper row gap, and the OS vendor pill has its own breathing room next to the "OS" label.
+- **Volumes compacted** — empty / unknown / sub-1 GB volumes are now hidden (those produced lots of "—" filler rows); remaining volumes flow into an auto-fit grid (2–3 per row depending on width) with a slimmer bar. The Volumes section is now a small band, not a tall column.
+
 ## [1.3.1] - 2026-06-08
 
 ### Fixed
