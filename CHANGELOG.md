@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-06-09
+
+### Fixed
+- **On-asset Impact Map was effectively a global view** on dense CMDBs (629 nodes on ScorScomSQLP01). Cause: the BFS scope from 1.6.0 was undirected and unbounded, so it walked the entire connected component of the asset. Replaced with a **bounded directed BFS** — `forward` hops along arrows OUT (impacts) and `backward` hops along arrows IN (impacted by), independently. Defaults to **2 each** (matches GLPI's native Impact Analysis density). If the start node has no relations, the tab now returns an empty graph instead of silently falling back to the global view.
+
+### Added
+- **Depth selectors in the on-asset tab toolbar** — two compact dropdowns (Forward 1–5, Backward 1–5). Changing either re-fetches and re-renders. The config-page (org-wide) view is unchanged and has no depth limit.
+- `ajax/impactmap.php` accepts `&forward=<int>&backward=<int>` (clamped 0–10 server-side).
+
 ## [1.6.0] - 2026-06-09
 
 ### Added

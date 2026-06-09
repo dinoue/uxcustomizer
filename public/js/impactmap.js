@@ -46,6 +46,9 @@
     const btnCollapseAll = root.querySelector('.uxc-impact-collapse-all');
     const btnFit = root.querySelector('.uxc-impact-fit');
     const btnLayout = root.querySelector('.uxc-impact-layout');
+    // Depth selects (only present in the on-asset tab; null on the config page).
+    const fwdSel = root.querySelector('.uxc-impact-forward');
+    const bwdSel = root.querySelector('.uxc-impact-backward');
 
     let network = null;
     let nodesDS = null;
@@ -188,9 +191,32 @@
         return yiq >= 150 ? '#111827' : '#ffffff';
     }
 
+    /**
+     * Build the fetch URL by appending live depth-select values (if the
+     * selects are present on the page — the on-asset tab has them; the
+     * org-wide config page does not, in which case the bare cfg.dataUrl wins).
+     */
+    function buildFetchUrl() {
+        let url = cfg.dataUrl;
+        const parts = [];
+        if (fwdSel) parts.push('forward=' + encodeURIComponent(fwdSel.value));
+        if (bwdSel) parts.push('backward=' + encodeURIComponent(bwdSel.value));
+        if (parts.length) {
+            url += (url.indexOf('?') >= 0 ? '&' : '?') + parts.join('&');
+        }
+        return url;
+    }
+
     function init() {
+        fetchAndRender();
+        // Depth selects trigger a full reload (destroy network → re-fetch).
+        if (fwdSel) fwdSel.addEventListener('change', reload);
+        if (bwdSel) bwdSel.addEventListener('change', reload);
+    }
+
+    function fetchAndRender() {
         setStatus(t('loading', 'Loading…'), 'info');
-        fetch(cfg.dataUrl, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        fetch(buildFetchUrl(), { credentials: 'same-origin', headers: { Accept: 'application/json' } })
             .then(r => r.json())
             .then(payload => {
                 if (!payload || !payload.ok || !payload.data) {
@@ -201,6 +227,29 @@
             .catch(err => {
                 setStatus(t('failed', 'Failed to load:') + ' ' + err.message, 'error');
             });
+    }
+
+    /**
+     * Tear down the current network instance and re-fetch from scratch. Used
+     * when depth selects change (or any future control that affects the
+     * server-side query).
+     */
+    function reload() {
+        if (network) {
+            try { network.destroy(); } catch (e) { /* ignore */ }
+            network = null;
+        }
+        nodesDS = null;
+        edgesDS = null;
+        clusterIdByCompound = {};
+        state.hiddenTypes = new Set();
+        state.hierarchical = false;
+        state.search = '';
+        if (searchEl) searchEl.value = '';
+        if (sidePanel) sidePanel.classList.remove('uxc-impact-side--open');
+        const emptyEl = root.querySelector('.uxc-impact-empty');
+        if (emptyEl) emptyEl.style.display = 'none';
+        fetchAndRender();
     }
 
     function renderGraph(data) {

@@ -82,10 +82,17 @@ class ImpactMap
     /**
      * Build the impact graph from GLPI's native tables.
      *
-     * @param array{itemtype?:string,items_id?:int,types?:string[]} $scope
+     * @param array{
+     *   itemtype?:string,items_id?:int,
+     *   forward?:int,backward?:int,
+     *   types?:string[]
+     * } $scope
      *        Optional scoping. If itemtype+items_id given, returns ONLY the
-     *        connected subgraph (BFS over relations). If types given, filters
-     *        nodes by itemtype.
+     *        subgraph reachable from that node by a BOUNDED DIRECTED BFS:
+     *        `forward` hops along arrows OUT (impacts), `backward` hops
+     *        along arrows IN (impacted by). Both default to 2, capped at 10.
+     *        If the start node has no relations, returns an empty graph.
+     *        If types given, additionally filters nodes by itemtype.
      *
      * @return array{
      *   nodes: list<array{
@@ -158,31 +165,65 @@ class ImpactMap
             }
         }
 
-        // ── 3. Optional scope: BFS from (itemtype, items_id) ─────────────────
+        // ── 3. Optional scope: BOUNDED DIRECTED BFS from (itemtype, items_id) ──
+        // Walks `forward` hops along arrows OUT (impacts) and `backward` hops
+        // along arrows IN (impacted by), independently. Defaults match GLPI's
+        // native impact analysis depth (≈2 each). If the start node isn't in
+        // the data, return an empty graph (don't fall back to global — that
+        // surprised users in 1.6.0 by silently rendering hundreds of nodes).
         if (!empty($scope['itemtype']) && !empty($scope['items_id'])) {
             $start = $scope['itemtype'] . ':' . (int) $scope['items_id'];
-            if (isset($nodeSet[$start])) {
-                $adj = [];
+            $forwardDepth  = isset($scope['forward'])  ? max(0, min(10, (int) $scope['forward']))  : 2;
+            $backwardDepth = isset($scope['backward']) ? max(0, min(10, (int) $scope['backward'])) : 2;
+
+            if (!isset($nodeSet[$start])) {
+                // Start has no relations; return empty subgraph (NOT the full graph).
+                $totalNodes = 0;
+                $totalEdges = 0;
+                $nodeSet = [];
+            } else {
+                // Directed adjacency: forward edges = source → impacted.
+                $forward = []; // a => [b, …]  (a impacts b)
+                $reverse = []; // b => [a, …]  (a impacts b → b is impacted by a)
                 foreach ($rows as $r) {
                     $a = $r['fs'] . ':' . $r['fi'];
                     $b = $r['ts'] . ':' . $r['ti'];
-                    $adj[$a][$b] = true;
-                    $adj[$b][$a] = true; // undirected reachability
+                    $forward[$a][$b] = true;
+                    $reverse[$b][$a] = true;
                 }
-                $keep = [];
-                $queue = [$start];
-                while ($queue) {
-                    $cur = array_shift($queue);
-                    if (isset($keep[$cur])) {
-                        continue;
-                    }
-                    $keep[$cur] = true;
-                    foreach (array_keys($adj[$cur] ?? []) as $nb) {
-                        if (!isset($keep[$nb])) {
-                            $queue[] = $nb;
+
+                $keep = [$start => true];
+
+                // Forward BFS (this asset → what it impacts).
+                $layer = [$start];
+                for ($d = 0; $d < $forwardDepth && $layer; $d++) {
+                    $next = [];
+                    foreach ($layer as $cur) {
+                        foreach (array_keys($forward[$cur] ?? []) as $nb) {
+                            if (!isset($keep[$nb])) {
+                                $keep[$nb] = true;
+                                $next[] = $nb;
+                            }
                         }
                     }
+                    $layer = $next;
                 }
+
+                // Backward BFS (what impacts this asset → upstream).
+                $layer = [$start];
+                for ($d = 0; $d < $backwardDepth && $layer; $d++) {
+                    $next = [];
+                    foreach ($layer as $cur) {
+                        foreach (array_keys($reverse[$cur] ?? []) as $nb) {
+                            if (!isset($keep[$nb])) {
+                                $keep[$nb] = true;
+                                $next[] = $nb;
+                            }
+                        }
+                    }
+                    $layer = $next;
+                }
+
                 $nodeSet = array_intersect_key($nodeSet, $keep);
             }
         }

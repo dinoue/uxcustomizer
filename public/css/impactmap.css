@@ -84,6 +84,16 @@
     border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
+/* BFS depth selectors (on-asset tab only). Compact, no wrap. */
+.uxc-impact-depth {
+    gap: 0.15rem;
+}
+
+.uxc-impact-depth label {
+    color: var(--uxc-impact-muted);
+    white-space: nowrap;
+}
+
 /* Active state for the Tree/Force layout toggle (Bootstrap "active" is for
    nav items, not outline buttons — give it a clear visual). */
 .uxc-impact-toolbar .btn.active {

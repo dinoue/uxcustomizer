@@ -98,9 +98,15 @@ class ImpactMapTab extends CommonGLPI
             return $rootDoc . '/plugins/uxcustomizer/' . $rel . '?v=' . $v;
         };
 
+        // The dataUrl is bare itemtype+items_id; the JS appends &forward=&backward=
+        // from the depth selects on each fetch (initial + every change).
         $dataUrl = $rootDoc . '/plugins/uxcustomizer/ajax/impactmap.php'
             . '?itemtype=' . urlencode($itemtype)
             . '&items_id=' . $itemId;
+
+        // Default BFS depths (forward = arrows out / impacts; backward = arrows in / impacted by).
+        $defaultForward  = 2;
+        $defaultBackward = 2;
 
         // ── Stylesheet (idempotent: GLPI/browser dedupe by URL) ────────────
         echo '<link rel="stylesheet" type="text/css" href="' . $asset('public/css/impactmap.css') . '">';
@@ -131,6 +137,32 @@ class ImpactMapTab extends CommonGLPI
         echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-layout"'
             . ' title="' . htmlspecialchars(__('Toggle force-directed / tree layout', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
             . '<i class="ti ti-binary-tree me-1"></i>' . __('Tree layout', 'uxcustomizer') . '</button>';
+
+        // ── BFS depth selectors (on-asset tab only; the config-page Impact
+        // Map keeps the org-wide view with no depth limit). 1..5 covers the
+        // useful range; 2/2 matches GLPI native impact analysis density. ──
+        $depthRange = [1, 2, 3, 4, 5];
+        echo '<div class="uxc-impact-depth d-inline-flex align-items-center ms-2">';
+        echo '<label class="form-label small mb-0 me-1" for="uxc-impact-forward" title="'
+            . htmlspecialchars(__('Hops along arrows OUT (what this asset impacts)', 'uxcustomizer'), ENT_QUOTES, 'UTF-8')
+            . '">' . __('Forward', 'uxcustomizer') . '</label>';
+        echo '<select id="uxc-impact-forward" class="form-select form-select-sm uxc-impact-forward" style="width:auto">';
+        foreach ($depthRange as $d) {
+            $sel = ($d === $defaultForward) ? ' selected' : '';
+            echo '<option value="' . $d . '"' . $sel . '>' . $d . '</option>';
+        }
+        echo '</select>';
+        echo '<label class="form-label small mb-0 ms-2 me-1" for="uxc-impact-backward" title="'
+            . htmlspecialchars(__('Hops along arrows IN (what impacts this asset)', 'uxcustomizer'), ENT_QUOTES, 'UTF-8')
+            . '">' . __('Backward', 'uxcustomizer') . '</label>';
+        echo '<select id="uxc-impact-backward" class="form-select form-select-sm uxc-impact-backward" style="width:auto">';
+        foreach ($depthRange as $d) {
+            $sel = ($d === $defaultBackward) ? ' selected' : '';
+            echo '<option value="' . $d . '"' . $sel . '>' . $d . '</option>';
+        }
+        echo '</select>';
+        echo '</div>';
+
         echo '<span class="uxc-impact-status"></span>';
         echo '</div>';
 
@@ -185,6 +217,8 @@ class ImpactMapTab extends CommonGLPI
             'layout_force' => __('Force layout', 'uxcustomizer'),
             'show_type'    => __('Click to show', 'uxcustomizer'),
             'hide_type'    => __('Click to hide', 'uxcustomizer'),
+            'forward'      => __('Forward', 'uxcustomizer'),
+            'backward'     => __('Backward', 'uxcustomizer'),
         ];
     }
 }

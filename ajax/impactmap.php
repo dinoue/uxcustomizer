@@ -7,8 +7,10 @@
  * vis-network renderer. Read-only — does NOT mutate impact tables.
  *
  * Query params (all optional):
- *   itemtype  — restrict to the connected subgraph from this asset (with items_id)
+ *   itemtype  — restrict to the subgraph from this asset (with items_id)
  *   items_id  — paired with itemtype
+ *   forward   — directed BFS hops along arrows OUT (impacts); 0..10, default 2
+ *   backward  — directed BFS hops along arrows IN (impacted by); 0..10, default 2
  *   types[]   — filter nodes to these itemtypes (repeatable, e.g. ?types[]=Computer&types[]=Software)
  *
  * Response: { ok: bool, error?: string, data?: {nodes,edges,compounds,meta} }
@@ -55,6 +57,14 @@ if (!empty($_GET['itemtype']) && !empty($_GET['items_id'])) {
     if (isset($known[$_GET['itemtype']])) {
         $scope['itemtype'] = (string) $_GET['itemtype'];
         $scope['items_id'] = (int)    $_GET['items_id'];
+    }
+    // BFS depths: numeric, clamp to [0..10] so a hostile or fat-fingered URL
+    // can't make us BFS the entire org. ImpactMap::getGraph re-clamps to be safe.
+    if (isset($_GET['forward'])) {
+        $scope['forward']  = max(0, min(10, (int) $_GET['forward']));
+    }
+    if (isset($_GET['backward'])) {
+        $scope['backward'] = max(0, min(10, (int) $_GET['backward']));
     }
 }
 if (!empty($_GET['types']) && is_array($_GET['types'])) {
