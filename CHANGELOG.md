@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-06-08
+
+### Changed
+- **Dashboard layout consolidated** — Software summary, Hardware, Lifecycle and Details are now one single **System info** card (three columns: Software / Hardware / Lifecycle, with Volumes and Details as full-width sections below). Tickets + Contracts move to a separate 2-column row underneath, keeping the page tidier.
+
+### Added
+- **OS vendor brand icons** next to the OS line (Windows / Red Hat / Ubuntu / Debian / Apple / Android / SUSE / Linux / generic) using Tabler brand glyphs with vendor-coloured icons, no bundled logo files.
+
 ## [1.2.3] - 2026-06-08
 
 ### Changed

@@ -52,9 +52,47 @@
 /* ── Grid + cards ── */
 .uxc-ci-detail .uxc-grid { display: grid; gap: 1rem; margin-bottom: 1rem; }
 .uxc-ci-detail .uxc-grid-4 { grid-template-columns: repeat(4, 1fr); }
+.uxc-ci-detail .uxc-grid-3 { grid-template-columns: repeat(3, 1fr); }
 .uxc-ci-detail .uxc-grid-2 { grid-template-columns: repeat(2, 1fr); }
-@media (max-width: 1100px) { .uxc-ci-detail .uxc-grid-4 { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 700px)  { .uxc-ci-detail .uxc-grid-4, .uxc-ci-detail .uxc-grid-2 { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) {
+    .uxc-ci-detail .uxc-grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .uxc-ci-detail .uxc-grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 700px)  { .uxc-ci-detail .uxc-grid-4, .uxc-ci-detail .uxc-grid-3, .uxc-ci-detail .uxc-grid-2 { grid-template-columns: 1fr; } }
+
+/* ── Consolidated System info card ── */
+.uxc-ci-detail .uxc-sysinfo { padding: 1.1rem 1.25rem; }
+.uxc-ci-detail .uxc-sysinfo .uxc-metrics { margin-top: 0.25rem; }
+.uxc-ci-detail .uxc-sysinfo-grid { margin-top: 0.5rem; gap: 1.25rem; }
+.uxc-ci-detail .uxc-sysinfo-col + .uxc-sysinfo-col { padding-left: 1rem; border-left: 1px solid var(--uxc-line); }
+@media (max-width: 1100px) {
+    .uxc-ci-detail .uxc-sysinfo-col + .uxc-sysinfo-col { padding-left: 0; border-left: none; }
+}
+.uxc-ci-detail .uxc-subhead {
+    font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--uxc-muted); margin: 0 0 0.5rem;
+}
+.uxc-ci-detail .uxc-subhead-row { margin: 1rem 0 0.5rem; padding-top: 0.85rem; border-top: 1px solid var(--uxc-line); }
+.uxc-ci-detail .uxc-kv-wide { grid-template-columns: 14rem 1fr; }
+.uxc-ci-detail .uxc-kv-wide dd { text-align: left; }
+
+/* ── OS vendor pill (next to OS name) ── */
+.uxc-ci-detail .uxc-os {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.1rem 0.55rem; border-radius: 999px;
+    background: var(--uxc-card-2); border: 1px solid var(--uxc-line);
+    font-weight: 600;
+}
+.uxc-ci-detail .uxc-os i { font-size: 1rem; line-height: 1; }
+.uxc-ci-detail .uxc-os-windows i { color: #00a4ef; }
+.uxc-ci-detail .uxc-os-redhat  i { color: #ee0000; }
+.uxc-ci-detail .uxc-os-ubuntu  i { color: #e95420; }
+.uxc-ci-detail .uxc-os-debian  i { color: #a80030; }
+.uxc-ci-detail .uxc-os-apple   i { color: #a2aaad; }
+.uxc-ci-detail .uxc-os-android i { color: #3ddc84; }
+.uxc-ci-detail .uxc-os-suse    i { color: #73ba25; }
+.uxc-ci-detail .uxc-os-linux   i { color: #fcc624; }
+.uxc-ci-detail .uxc-os-generic i { color: var(--uxc-muted); }
 
 .uxc-ci-detail .uxc-card {
     background: var(--uxc-card); border: 1px solid var(--uxc-line);

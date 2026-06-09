@@ -51,33 +51,65 @@ $num     = static fn($v) => $v === null ? '—' : (int) $v;
     <?= $card($data['health']) ?>
   </div>
 
-  <!-- 2x2 detail grid -->
-  <div class="uxc-grid uxc-grid-2">
+  <!-- Consolidated System info card (Software + Hardware + Lifecycle + Details) -->
+  <?php $osm = \GlpiPlugin\Uxcustomizer\ComputerDashboard::osIcon((string) $data['software']['os']); ?>
+  <div class="uxc-card uxc-sysinfo">
+    <div class="uxc-card-title"><i class="ti ti-device-desktop me-1"></i><?= __('System info', 'uxcustomizer') ?></div>
 
-    <div class="uxc-card">
-      <div class="uxc-card-title"><i class="ti ti-apps me-1"></i><?= __('Software summary', 'uxcustomizer') ?></div>
-      <div class="uxc-metrics">
-        <div class="uxc-metric"><span class="uxc-metric-n"><?= (int) $data['software']['installed'] ?></span><span class="uxc-metric-l"><?= __('Installed', 'uxcustomizer') ?></span></div>
-        <div class="uxc-metric"><span class="uxc-metric-n uxc-warn"><?= $num($data['software']['unlicensed']) ?></span><span class="uxc-metric-l"><?= __('Unlicensed', 'uxcustomizer') ?></span></div>
-        <div class="uxc-metric"><span class="uxc-metric-n"><?= $num($data['software']['uptime']) ?></span><span class="uxc-metric-l"><?= __('Uptime', 'uxcustomizer') ?></span></div>
-      </div>
-      <dl class="uxc-kv">
-        <dt><?= __('OS', 'uxcustomizer') ?></dt><dd><?= $h($data['software']['os']) ?></dd>
-        <dt><?= __('Build', 'uxcustomizer') ?></dt><dd><?= $h($data['software']['build']) ?></dd>
-        <dt><?= __('OS install date', 'uxcustomizer') ?></dt><dd><?= $fmtDate($data['software']['install_date']) ?></dd>
-      </dl>
+    <div class="uxc-metrics">
+      <div class="uxc-metric"><span class="uxc-metric-n"><?= (int) $data['software']['installed'] ?></span><span class="uxc-metric-l"><?= __('Installed', 'uxcustomizer') ?></span></div>
+      <div class="uxc-metric"><span class="uxc-metric-n uxc-warn"><?= $num($data['software']['unlicensed']) ?></span><span class="uxc-metric-l"><?= __('Unlicensed', 'uxcustomizer') ?></span></div>
+      <div class="uxc-metric"><span class="uxc-metric-n"><?= $num($data['software']['uptime']) ?></span><span class="uxc-metric-l"><?= __('Uptime', 'uxcustomizer') ?></span></div>
     </div>
 
-    <div class="uxc-card">
-      <div class="uxc-card-title"><i class="ti ti-cpu me-1"></i><?= __('Hardware', 'uxcustomizer') ?></div>
-      <dl class="uxc-kv">
-        <dt><?= __('Model') ?></dt><dd><?= $h($data['hardware']['model']) ?></dd>
-        <dt><?= __('Processor') ?></dt><dd><?= $h($data['hardware']['cpu']) ?></dd>
-        <dt><?= __('Memory') ?></dt><dd><?= $h($data['hardware']['ram']) ?></dd>
-        <dt><?= __('Hard drive') ?></dt><dd><?= $h($data['hardware']['disk']) ?></dd>
-      </dl>
-      <?php if (!empty($data['volumes'])): ?>
-        <div class="uxc-vol-head"><?= __('Volumes', 'uxcustomizer') ?></div>
+    <div class="uxc-grid uxc-grid-3 uxc-sysinfo-grid">
+
+      <div class="uxc-sysinfo-col">
+        <div class="uxc-subhead"><i class="ti ti-apps me-1"></i><?= __('Software', 'uxcustomizer') ?></div>
+        <dl class="uxc-kv">
+          <dt><?= __('OS', 'uxcustomizer') ?></dt>
+          <dd>
+            <span class="uxc-os <?= $h($osm['tone']) ?>"><i class="<?= $h($osm['icon']) ?> me-1" aria-hidden="true"></i><?= $h($data['software']['os']) ?></span>
+          </dd>
+          <dt><?= __('Build', 'uxcustomizer') ?></dt><dd><?= $h($data['software']['build']) ?></dd>
+          <dt><?= __('OS install date', 'uxcustomizer') ?></dt><dd><?= $fmtDate($data['software']['install_date']) ?></dd>
+        </dl>
+      </div>
+
+      <div class="uxc-sysinfo-col">
+        <div class="uxc-subhead"><i class="ti ti-cpu me-1"></i><?= __('Hardware', 'uxcustomizer') ?></div>
+        <dl class="uxc-kv">
+          <dt><?= __('Model') ?></dt><dd><?= $h($data['hardware']['model']) ?></dd>
+          <dt><?= __('Processor') ?></dt><dd><?= $h($data['hardware']['cpu']) ?></dd>
+          <dt><?= __('Memory') ?></dt><dd><?= $h($data['hardware']['ram']) ?></dd>
+          <dt><?= __('Hard drive') ?></dt><dd><?= $h($data['hardware']['disk']) ?></dd>
+        </dl>
+      </div>
+
+      <div class="uxc-sysinfo-col">
+        <div class="uxc-subhead"><i class="ti ti-recycle me-1"></i><?= __('Lifecycle', 'uxcustomizer') ?></div>
+        <dl class="uxc-kv">
+          <dt><?= __('Purchase date') ?></dt><dd><?= $fmtDate($data['lifecycle']['buy_date']) ?></dd>
+          <dt><?= __('Warranty') ?></dt><dd><?php
+            $wm = $data['lifecycle']['warranty_months'];
+            if ($wm === -1)                                     { echo $h(__('Lifetime', 'uxcustomizer')); }
+            elseif (!empty($data['lifecycle']['warranty_end'])) { echo $fmtDate($data['lifecycle']['warranty_end']); }
+            elseif (!empty($wm))                                { echo (int) $wm . ' ' . __('months'); }
+            else                                                { echo '—'; }
+          ?></dd>
+          <dt><?= __('Retention', 'uxcustomizer') ?></dt><dd><?= (int) $data['lifecycle']['retention_years'] ?> <?= __('years') ?></dd>
+          <dt><?= __('Retirement', 'uxcustomizer') ?></dt><dd><?= $fmtDate($data['lifecycle']['retire_date']) ?></dd>
+        </dl>
+        <?php if (!empty($data['lifecycle']['remaining'])): ?>
+          <div class="uxc-life-status <?= $data['lifecycle']['overdue'] ? 'uxc-life-overdue' : 'uxc-life-ok' ?>"><?= $h($data['lifecycle']['remaining']) ?></div>
+        <?php endif; ?>
+      </div>
+
+    </div>
+
+    <?php if (!empty($data['volumes'])): ?>
+      <div class="uxc-subhead uxc-subhead-row"><i class="ti ti-database me-1"></i><?= __('Volumes', 'uxcustomizer') ?></div>
+      <div class="uxc-grid uxc-grid-2">
         <?php foreach ($data['volumes'] as $v): ?>
           <div class="uxc-vol">
             <div class="uxc-vol-top">
@@ -89,45 +121,28 @@ $num     = static fn($v) => $v === null ? '—' : (int) $v;
             <?php endif; ?>
           </div>
         <?php endforeach; ?>
-      <?php endif; ?>
-    </div>
+      </div>
+    <?php endif; ?>
 
-    <div class="uxc-card">
-      <div class="uxc-card-title"><i class="ti ti-recycle me-1"></i><?= __('Lifecycle', 'uxcustomizer') ?></div>
-      <dl class="uxc-kv">
-        <dt><?= __('Purchase date') ?></dt><dd><?= $fmtDate($data['lifecycle']['buy_date']) ?></dd>
-        <dt><?= __('Warranty') ?></dt><dd><?php
-          $wm = $data['lifecycle']['warranty_months'];
-          if ($wm === -1)                                 { echo $h(__('Lifetime', 'uxcustomizer')); }
-          elseif (!empty($data['lifecycle']['warranty_end'])) { echo $fmtDate($data['lifecycle']['warranty_end']); }
-          elseif (!empty($wm))                            { echo (int) $wm . ' ' . __('months'); }
-          else                                            { echo '—'; }
-        ?></dd>
-        <dt><?= __('Retention', 'uxcustomizer') ?></dt><dd><?= (int) $data['lifecycle']['retention_years'] ?> <?= __('years') ?></dd>
-        <dt><?= __('Retirement', 'uxcustomizer') ?></dt><dd><?= $fmtDate($data['lifecycle']['retire_date']) ?></dd>
-      </dl>
-      <?php if (!empty($data['lifecycle']['remaining'])): ?>
-        <div class="uxc-life-status <?= $data['lifecycle']['overdue'] ? 'uxc-life-overdue' : 'uxc-life-ok' ?>"><?= $h($data['lifecycle']['remaining']) ?></div>
-      <?php endif; ?>
-    </div>
-
-    <div class="uxc-card">
-      <div class="uxc-card-title"><i class="ti ti-info-circle me-1"></i><?= __('Details', 'uxcustomizer') ?></div>
+    <?php if (!empty($data['custom_fields']) || !empty($data['tags'])): ?>
+      <div class="uxc-subhead uxc-subhead-row"><i class="ti ti-info-circle me-1"></i><?= __('Details', 'uxcustomizer') ?></div>
       <?php if (!empty($data['custom_fields'])): ?>
-        <dl class="uxc-kv">
+        <dl class="uxc-kv uxc-kv-wide">
           <?php foreach ($data['custom_fields'] as $cf): ?>
             <dt><?= $h($cf['label']) ?></dt><dd><?= $h($cf['value']) ?></dd>
           <?php endforeach; ?>
         </dl>
-      <?php else: ?>
-        <p class="uxc-muted"><?= __('No additional details.', 'uxcustomizer') ?></p>
       <?php endif; ?>
       <?php if (!empty($data['tags'])): ?>
         <div class="uxc-tags">
           <?php foreach ($data['tags'] as $tag): ?><span class="uxc-tag"><?= $h($tag) ?></span><?php endforeach; ?>
         </div>
       <?php endif; ?>
-    </div>
+    <?php endif; ?>
+  </div>
+
+  <!-- Tickets + Contracts side-by-side -->
+  <div class="uxc-grid uxc-grid-2">
 
     <div class="uxc-card">
       <div class="uxc-card-head">

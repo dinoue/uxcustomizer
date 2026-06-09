@@ -57,6 +57,32 @@ class ComputerDashboard extends CommonGLPI
     }
 
     /**
+     * Map an OS name to a Tabler brand-icon class + a CSS tone class, used in
+     * the consolidated System-info card. Returns ['icon' => 'ti …', 'tone' => '…'].
+     * Falls back to a generic device icon so the row never looks broken.
+     */
+    public static function osIcon(string $osName): array
+    {
+        $s = strtolower($osName);
+        // Tabler brand glyphs ship with GLPI 11. Where no brand-specific Tabler
+        // glyph exists, use the closest fit.
+        if (str_contains($s, 'windows'))                                                  { return ['icon' => 'ti ti-brand-windows',  'tone' => 'uxc-os-windows']; }
+        if (str_contains($s, 'red hat') || str_contains($s, 'rhel'))                      { return ['icon' => 'ti ti-brand-redhat',   'tone' => 'uxc-os-redhat']; }
+        if (str_contains($s, 'ubuntu'))                                                   { return ['icon' => 'ti ti-brand-ubuntu',   'tone' => 'uxc-os-ubuntu']; }
+        if (str_contains($s, 'debian'))                                                   { return ['icon' => 'ti ti-brand-debian',   'tone' => 'uxc-os-debian']; }
+        if (str_contains($s, 'mac') || str_contains($s, 'os x') || str_contains($s, 'macos'))
+                                                                                          { return ['icon' => 'ti ti-brand-apple',    'tone' => 'uxc-os-apple']; }
+        if (str_contains($s, 'android'))                                                  { return ['icon' => 'ti ti-brand-android',  'tone' => 'uxc-os-android']; }
+        if (str_contains($s, 'ios'))                                                      { return ['icon' => 'ti ti-brand-apple',    'tone' => 'uxc-os-apple']; }
+        if (str_contains($s, 'fedora') || str_contains($s, 'centos') || str_contains($s, 'rocky') || str_contains($s, 'alma'))
+                                                                                          { return ['icon' => 'ti ti-brand-redhat',   'tone' => 'uxc-os-redhat']; }
+        if (str_contains($s, 'suse') || str_contains($s, 'opensuse'))                     { return ['icon' => 'ti ti-brand-opensuse', 'tone' => 'uxc-os-suse']; }
+        if (str_contains($s, 'linux'))                                                    { return ['icon' => 'ti ti-brand-tux',      'tone' => 'uxc-os-linux']; }
+        if (str_contains($s, 'esxi') || str_contains($s, 'vmware'))                       { return ['icon' => 'ti ti-server',         'tone' => 'uxc-os-generic']; }
+        return ['icon' => 'ti ti-device-desktop', 'tone' => 'uxc-os-generic'];
+    }
+
+    /**
      * Collect the dashboard data from existing GLPI tables (no new schema).
      *
      * NOTE (porting from lcornoc02): the detailed/inventory-derived fields —
