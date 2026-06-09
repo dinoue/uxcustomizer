@@ -73,7 +73,7 @@
     font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
     color: var(--uxc-muted); margin: 0 0 0.6rem;
 }
-.uxc-ci-detail .uxc-subhead-row { margin: 1.25rem 0 0.75rem; padding-top: 1rem; border-top: 1px solid var(--uxc-line); }
+.uxc-ci-detail .uxc-subhead-row { margin: 2rem 0 1rem; padding-top: 1.25rem; border-top: 1px solid var(--uxc-line); }
 .uxc-ci-detail .uxc-kv-wide { grid-template-columns: 14rem 1fr; }
 .uxc-ci-detail .uxc-kv-wide dd { text-align: left; }
 
@@ -175,7 +175,7 @@
 /* Auto-fit volumes into as many columns as fit (≈ 240 px each). */
 .uxc-ci-detail .uxc-volumes {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 0.4rem 1.25rem; margin: 0;
+    gap: 0.6rem 1.5rem; margin: 0 0 0.75rem;
 }
 .uxc-ci-detail .uxc-vol { margin: 0; padding: 0.2rem 0; }
 .uxc-ci-detail .uxc-vol-top {
