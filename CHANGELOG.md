@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-06-10
+
+### Added
+- **"Flow" layout — native Impact Analysis look with our interactions.** The Impact Map gains a layout selector (Flow / Force / Tree). **Flow** computes a left-to-right layered layout with **dagre** — the exact algorithm GLPI's native Impact Analysis uses (cytoscape-dagre, rankdir LR) — so the map reads like the native page (sources left, impacted right), while keeping everything native lacks: collapsible compound groups with member counts, "N conn." merged-edge labels, legend filter pills, search dim, side panel, and persistent positions. Cycles are handled by dagre's greedy acyclicer. dagre 0.8.5 is bundled locally (no CDN).
+- **Per-mode edge styling** — horizontal beziers in Flow, vertical in Tree, organic in Force.
+
+### Changed
+- The on-asset tab (Computer / Appliance) now **defaults to Flow** so it feels like the native Impact Analysis at first glance; the org-wide config-page view keeps **Force** as default (better for large, disconnected graphs). Switching modes re-lays out in place without re-fetching, and repositions collapsed groups to the average of their members.
+- Saved positions (1.7.0) still win over any computed layout in Flow/Force modes — your manual arrangement is never discarded. Tree mode always recomputes (the hierarchical engine owns coordinates there) and never overwrites your saved arrangement.
+
 ## [1.7.0] - 2026-06-10
 
 ### Added

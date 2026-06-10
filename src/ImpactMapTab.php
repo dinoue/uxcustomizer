@@ -134,9 +134,16 @@ class ImpactMapTab extends CommonGLPI
             . '<i class="ti ti-arrows-maximize me-1"></i>' . __('Expand all', 'uxcustomizer') . '</button>';
         echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-fit">'
             . '<i class="ti ti-focus-2 me-1"></i>' . __('Fit', 'uxcustomizer') . '</button>';
-        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-layout"'
-            . ' title="' . htmlspecialchars(__('Toggle force-directed / tree layout', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
-            . '<i class="ti ti-binary-tree me-1"></i>' . __('Tree layout', 'uxcustomizer') . '</button>';
+        // Layout mode. "Flow" = dagre LR, the same layered look as GLPI's
+        // native Impact Analysis — default here so the tab feels familiar.
+        echo '<div class="d-inline-flex align-items-center ms-1">';
+        echo '<label class="form-label small mb-0 me-1" for="uxc-impact-layoutsel">' . __('Layout', 'uxcustomizer') . '</label>';
+        echo '<select id="uxc-impact-layoutsel" class="form-select form-select-sm uxc-impact-layoutsel" style="width:auto">';
+        echo '<option value="flow" selected>' . __('Flow (left-right)', 'uxcustomizer') . '</option>';
+        echo '<option value="force">' . __('Force (organic)', 'uxcustomizer') . '</option>';
+        echo '<option value="tree">' . __('Tree (top-down)', 'uxcustomizer') . '</option>';
+        echo '</select>';
+        echo '</div>';
 
         // ── BFS depth selectors (on-asset tab only; the config-page Impact
         // Map keeps the org-wide view with no depth limit). 1..5 covers the
@@ -187,6 +194,9 @@ class ImpactMapTab extends CommonGLPI
             'i18n'    => self::i18nKeys(),
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>';
         echo '<script src="' . $asset('public/js/vis-network.min.js') . '"></script>';
+        // dagre powers the "Flow" (left-right layered) layout — the same
+        // algorithm GLPI's native Impact Analysis uses. Bundled locally.
+        echo '<script src="' . $asset('public/js/dagre.min.js') . '"></script>';
         echo '<script src="' . $asset('public/js/impactmap.js') . '"></script>';
 
         return true;

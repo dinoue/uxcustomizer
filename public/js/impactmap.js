@@ -45,7 +45,9 @@
     const btnExpandAll = root.querySelector('.uxc-impact-expand-all');
     const btnCollapseAll = root.querySelector('.uxc-impact-collapse-all');
     const btnFit = root.querySelector('.uxc-impact-fit');
-    const btnLayout = root.querySelector('.uxc-impact-layout');
+    // Layout mode select: flow (dagre LR — native Impact Analysis look),
+    // force (physics), tree (vis hierarchical top-down).
+    const layoutSel = root.querySelector('.uxc-impact-layoutsel');
     // Depth selects (only present in the on-asset tab; null on the config page).
     const fwdSel = root.querySelector('.uxc-impact-forward');
     const bwdSel = root.querySelector('.uxc-impact-backward');
@@ -62,7 +64,7 @@
     // ── Reactive UI state ────────────────────────────────────────────────────
     const state = {
         hiddenTypes: new Set(),  // itemtypes hidden via legend pills
-        hierarchical: false,     // tree vs force-directed
+        layoutMode: 'force',     // 'flow' (dagre LR) | 'force' | 'tree'
         search: '',              // current search query (lowercase)
     };
 
@@ -161,15 +163,67 @@
     }
 
     function buildVisEdges() {
+        // NB: no per-edge `smooth` here — edge curvature is a global option
+        // set per layout mode (smoothFor), so mode switches restyle all edges.
         return allEdges.map((e, idx) => ({
             id: 'e' + idx,
             from: e.from,
             to: e.to,
             arrows: { to: { enabled: true, scaleFactor: 0.6 } },
             color: { color: '#94a3b8', highlight: '#1f2937', hover: '#1f2937' },
-            smooth: { enabled: true, type: 'dynamic' },
             width: 1.5,
         }));
+    }
+
+    /** Edge curvature per layout mode (horizontal flow / vertical tree / organic). */
+    function smoothFor(mode) {
+        if (mode === 'flow') {
+            return { enabled: true, type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.45 };
+        }
+        if (mode === 'tree') {
+            return { enabled: true, type: 'cubicBezier', forceDirection: 'vertical', roundness: 0.45 };
+        }
+        return { enabled: true, type: 'dynamic' };
+    }
+
+    /**
+     * Compute a dagre left-to-right layered layout ("Flow") — the same
+     * algorithm GLPI's native Impact Analysis uses (cytoscape-dagre, rankdir
+     * LR) — and return {nodeId: {x,y}}. Cycles are handled by dagre's greedy
+     * acyclicer. Width is estimated from the label since vis box nodes size
+     * to their text.
+     */
+    function computeDagrePositions(nodes, edges) {
+        const g = new dagre.graphlib.Graph();
+        g.setGraph({
+            rankdir: 'LR',
+            nodesep: 30,
+            ranksep: 110,
+            marginx: 20,
+            marginy: 20,
+            acyclicer: 'greedy',
+            ranker: 'network-simplex',
+        });
+        g.setDefaultEdgeLabel(() => ({}));
+        nodes.forEach(n => {
+            const label = String(n._name || n.label || '');
+            const w = Math.max(70, Math.min(190, label.length * 7.5 + 30));
+            g.setNode(n.id, { width: w, height: 38 });
+        });
+        edges.forEach(e => {
+            if (g.hasNode(e.from) && g.hasNode(e.to)) {
+                g.setEdge(e.from, e.to);
+            }
+        });
+        dagre.layout(g);
+        const out = {};
+        g.nodes().forEach(id => {
+            const p = g.node(id);
+            if (p) {
+                out[id] = { x: p.x, y: p.y };
+            }
+        });
+        return out;
     }
 
     /**
@@ -289,7 +343,6 @@
         edgesDS = null;
         clusterIdByCompound = {};
         state.hiddenTypes = new Set();
-        state.hierarchical = false;
         state.search = '';
         if (searchEl) searchEl.value = '';
         if (sidePanel) sidePanel.classList.remove('uxc-impact-side--open');
@@ -311,18 +364,36 @@
         }
 
         const visNodes = buildVisNodes();
+        const mode = layoutSel ? layoutSel.value : 'force';
+        state.layoutMode = mode;
 
-        // Preset layout: if a previous visit saved a position for EVERY node
-        // in this exact scope, reuse them and skip physics entirely.
+        // Layout decision, in priority order:
+        //   1. Saved positions covering every node (user's arrangement) — but
+        //      not in tree mode, where vis's hierarchical engine owns x/y.
+        //   2. Flow mode → dagre LR computed positions (native-Impact look).
+        //   3. Tree mode → vis hierarchical (deterministic, no physics).
+        //   4. Force → seeded physics run (deterministic per seed).
         const saved = loadSavedPositions();
-        const preset = !!saved && visNodes.every(
+        const preset = mode !== 'tree' && !!saved && visNodes.every(
             n => saved[n.id] && typeof saved[n.id].x === 'number' && typeof saved[n.id].y === 'number'
         );
+        let staticLayout = preset;
         if (preset) {
             visNodes.forEach(n => {
                 n.x = saved[n.id].x;
                 n.y = saved[n.id].y;
             });
+        } else if (mode === 'flow' && typeof window.dagre !== 'undefined') {
+            const pos = computeDagrePositions(visNodes, allEdges);
+            visNodes.forEach(n => {
+                if (pos[n.id]) {
+                    n.x = pos[n.id].x;
+                    n.y = pos[n.id].y;
+                }
+            });
+            staticLayout = true;
+        } else if (mode === 'tree') {
+            staticLayout = true; // hierarchical engine positions synchronously
         }
 
         nodesDS = new vis.DataSet(visNodes);
@@ -343,8 +414,9 @@
             edges: {
                 hoverWidth: 0.5,
                 selectionWidth: 1,
+                smooth: smoothFor(mode),
             },
-            physics: preset
+            physics: staticLayout
                 ? { enabled: false }
                 : {
                     enabled: true,
@@ -361,11 +433,12 @@
                 },
             layout: {
                 // Fixed seed → the same graph lays out identically on every
-                // load (no more drift between visits). Preset positions ignore
-                // the seed entirely. improvedLayout (Kamada-Kawai pre-pass) is
-                // costly on big graphs — only worth it under ~150 nodes.
+                // load (no more drift between visits). Static layouts (preset,
+                // dagre, hierarchical) ignore the seed entirely. improvedLayout
+                // (Kamada-Kawai pre-pass) is costly — only under ~150 nodes.
                 randomSeed: 116,
-                improvedLayout: visNodes.length <= 150,
+                improvedLayout: !staticLayout && visNodes.length <= 150,
+                hierarchical: mode === 'tree' ? hierarchicalOpts() : false,
             },
         };
 
@@ -374,7 +447,7 @@
         // Re-enable HTML tooltips by patching the rendered title to be a DOM node.
         upgradeHtmlTooltips();
 
-        if (preset) {
+        if (staticLayout) {
             // No physics pass — finalize immediately.
             finalizeRender(meta, false);
         } else {
@@ -382,6 +455,20 @@
         }
 
         bindEvents();
+    }
+
+    /** vis hierarchical options for the Tree (top-down) mode. */
+    function hierarchicalOpts() {
+        return {
+            direction: 'UD',
+            sortMethod: 'directed',
+            levelSeparation: 140,
+            nodeSpacing: 140,
+            treeSpacing: 200,
+            blockShifting: true,
+            edgeMinimization: true,
+            parentCentralization: true,
+        };
     }
 
     /**
@@ -392,6 +479,12 @@
     function finalizeRender(meta, fromPhysics) {
         if (fromPhysics) {
             network.setOptions({ physics: { enabled: false } });
+            savePositions();
+        } else if (state.layoutMode !== 'tree') {
+            // Static render (preset or dagre flow): persist so the next load
+            // short-circuits to these exact coordinates. Tree positions are
+            // owned by vis's hierarchical engine — never save those, or they
+            // would leak into flow/force renders as a stale "arrangement".
             savePositions();
         }
         clusterAllCompounds();
@@ -554,42 +647,95 @@
         if (edgeUpdates.length) edgesDS.update(edgeUpdates);
     }
 
-    // ── Layout toggle (Tree / Force) ────────────────────────────────────────
+    // ── Layout modes (Flow / Force / Tree) ──────────────────────────────────
 
-    function setHierarchical(enable) {
+    /**
+     * Switch the live network to another layout without re-fetching.
+     *   flow  — dagre LR positions applied to the dataset, physics stays off
+     *   force — one bounded physics run, then freeze + persist
+     *   tree  — vis hierarchical engine takes over x/y
+     */
+    function applyLayoutMode(mode) {
+        state.layoutMode = mode;
         if (!network) return;
-        state.hierarchical = !!enable;
+
+        const anim = { animation: { duration: 400 } };
+
+        if (mode === 'tree') {
+            network.setOptions({
+                layout: { hierarchical: hierarchicalOpts() },
+                physics: { enabled: false },
+                edges: { smooth: smoothFor(mode) },
+            });
+            try { network.fit(anim); } catch (e) { /* ignore */ }
+            return;
+        }
+
+        // Leaving tree (or staying flat): release the hierarchical engine.
         network.setOptions({
-            layout: {
-                hierarchical: enable
-                    ? {
-                          direction: 'UD',          // Up → Down
-                          sortMethod: 'directed',
-                          levelSeparation: 140,
-                          nodeSpacing: 140,
-                          treeSpacing: 200,
-                          blockShifting: true,
-                          edgeMinimization: true,
-                          parentCentralization: true,
-                      }
-                    : false,
-            },
-            physics: { enabled: !enable },
+            layout: { hierarchical: false },
+            physics: { enabled: false },
+            edges: { smooth: smoothFor(mode) },
         });
-        // Tree layout repositions everything synchronously; fit to view.
-        try {
-            network.fit({ animation: { duration: 400 } });
-        } catch (e) {
-            // ignore
+
+        if (mode === 'flow' && typeof window.dagre !== 'undefined') {
+            const current = nodesDS.get();
+            const pos = computeDagrePositions(current, allEdges);
+            const updates = [];
+            current.forEach(n => {
+                if (pos[n.id]) {
+                    updates.push({ id: n.id, x: pos[n.id].x, y: pos[n.id].y });
+                }
+            });
+            nodesDS.update(updates);
+            repositionClusters(pos);
+            savePositions();
+            try { network.fit(anim); } catch (e) { /* ignore */ }
+        } else if (mode === 'force') {
+            network.setOptions({
+                physics: {
+                    enabled: true,
+                    solver: 'forceAtlas2Based',
+                    forceAtlas2Based: {
+                        gravitationalConstant: -45,
+                        centralGravity: 0.012,
+                        springLength: 130,
+                        springConstant: 0.08,
+                        damping: 0.6,
+                        avoidOverlap: 0.6,
+                    },
+                    stabilization: false,
+                },
+            });
+            network.once('stabilizationIterationsDone', () => {
+                network.setOptions({ physics: { enabled: false } });
+                savePositions();
+                try { network.fit(anim); } catch (e) { /* ignore */ }
+            });
+            network.stabilize(120);
         }
-        // Refresh button label.
-        if (btnLayout) {
-            btnLayout.classList.toggle('active', enable);
-            btnLayout.innerHTML = enable
-                ? '<i class="ti ti-circles-relation me-1"></i>' + t('layout_force', 'Force layout')
-                : '<i class="ti ti-binary-tree me-1"></i>' + t('layout_tree', 'Tree layout');
-        }
-        // Cluster edges keep their labels in tree layout; no action needed.
+    }
+
+    /**
+     * After a flow re-layout, collapsed cluster nodes are not in nodesDS so
+     * dagre never moved them — drop each at the average of its members'
+     * computed positions so groups land where their content belongs.
+     */
+    function repositionClusters(pos) {
+        Object.entries(clusterIdByCompound).forEach(([compoundId, clusterId]) => {
+            if (!network.isCluster(clusterId)) return;
+            let sx = 0, sy = 0, n = 0;
+            nodesDS.get().forEach(node => {
+                if (node._compoundId === Number(compoundId) && pos[node.id]) {
+                    sx += pos[node.id].x;
+                    sy += pos[node.id].y;
+                    n++;
+                }
+            });
+            if (n > 0) {
+                try { network.moveNode(clusterId, sx / n, sy / n); } catch (e) { /* ignore */ }
+            }
+        });
     }
 
     // ── Search (dim non-matching nodes) ─────────────────────────────────────
@@ -667,8 +813,8 @@
         if (btnFit) {
             btnFit.addEventListener('click', () => network.fit({ animation: { duration: 400 } }));
         }
-        if (btnLayout) {
-            btnLayout.addEventListener('click', () => setHierarchical(!state.hierarchical));
+        if (layoutSel) {
+            layoutSel.addEventListener('change', () => applyLayoutMode(layoutSel.value));
         }
         if (searchEl) {
             searchEl.addEventListener('input', () => {

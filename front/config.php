@@ -349,9 +349,17 @@ if ($activeTab === 'impactmap') {
             . '<i class="ti ti-arrows-maximize me-1"></i>' . __('Expand all', 'uxcustomizer') . '</button>';
         echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-fit">'
             . '<i class="ti ti-focus-2 me-1"></i>' . __('Fit', 'uxcustomizer') . '</button>';
-        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-layout"'
-            . ' title="' . htmlspecialchars(__('Toggle force-directed / tree layout', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
-            . '<i class="ti ti-binary-tree me-1"></i>' . __('Tree layout', 'uxcustomizer') . '</button>';
+        // Layout mode. Default Force here: the org-wide graph can be large
+        // and disconnected, where the organic layout reads better; "Flow"
+        // (dagre LR — native Impact Analysis look) is one click away.
+        echo '<div class="d-inline-flex align-items-center ms-1">';
+        echo '<label class="form-label small mb-0 me-1" for="uxc-impact-layoutsel">' . __('Layout', 'uxcustomizer') . '</label>';
+        echo '<select id="uxc-impact-layoutsel" class="form-select form-select-sm uxc-impact-layoutsel" style="width:auto">';
+        echo '<option value="force" selected>' . __('Force (organic)', 'uxcustomizer') . '</option>';
+        echo '<option value="flow">' . __('Flow (left-right)', 'uxcustomizer') . '</option>';
+        echo '<option value="tree">' . __('Tree (top-down)', 'uxcustomizer') . '</option>';
+        echo '</select>';
+        echo '</div>';
         echo '<span class="uxc-impact-status"></span>';
         echo '</div>';
 
@@ -425,6 +433,8 @@ if ($activeTab === 'impactmap' && Config::isModuleEnabled('impactmap')) {
         ],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>';
     echo '<script src="' . $asset('public/js/vis-network.min.js') . '"></script>';
+    // dagre powers the "Flow" (left-right layered) layout. Bundled locally.
+    echo '<script src="' . $asset('public/js/dagre.min.js') . '"></script>';
     echo '<script src="' . $asset('public/js/impactmap.js') . '"></script>';
 }
 

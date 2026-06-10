@@ -61,7 +61,7 @@ Org-wide topology view (Faddom-style) of GLPI's native impact relations. Compoun
 **Toolbar:**
 - **Search** — type a name; non-matching nodes fade to 15% opacity (the first match is focused).
 - **Collapse groups / Expand all / Fit** — re-cluster, open all groups, or zoom to fit.
-- **Tree layout** — toggle between force-directed and a top-down hierarchical layout (great for "what depends on this DB" walks).
+- **Layout selector** — **Flow** (left-right layered via dagre — the same algorithm and look as GLPI's native Impact Analysis), **Force** (organic physics), or **Tree** (top-down hierarchical). The on-asset tab defaults to Flow; the org-wide view defaults to Force. Switching re-lays out in place.
 
 **Legend pills** — color swatches double as on/off filters; click "Computer" to hide all Computer nodes (and their edges); click again to restore. Cluster nodes ignore the filter so groups stay visible.
 
@@ -103,10 +103,10 @@ Produces `dist/glpi-uxcustomizer-<VERSION>.tar.bz2`, excluding everything listed
 2. Push this repository to `github.com/bacus99/GLPI_UXCustomizer` (must be public).
 3. Tag and publish the build:
    ```bash
-   git tag -a 1.7.0 -m "Release 1.7.0"
+   git tag -a 1.8.0 -m "Release 1.8.0"
    git push --tags
-   gh release create 1.7.0 dist/glpi-uxcustomizer-1.7.0.tar.bz2 \
-       --title "1.7.0" --notes-from-tag
+   gh release create 1.8.0 dist/glpi-uxcustomizer-1.8.0.tar.bz2 \
+       --title "1.8.0" --notes-from-tag
    ```
 4. Verify every URL in `plugin.xml` resolves (logo, homepage, issues, readme, and the `download_url`).
 5. Submit to the [GLPI plugin catalog](https://plugins.glpi-project.org/) by opening a Pull Request to [pluginsGLPI/data](https://github.com/pluginsGLPI/data) adding your `plugin.xml` URL to `xml/plugins.json`.
