@@ -349,6 +349,9 @@ if ($activeTab === 'impactmap') {
             . '<i class="ti ti-arrows-maximize me-1"></i>' . __('Expand all', 'uxcustomizer') . '</button>';
         echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-fit">'
             . '<i class="ti ti-focus-2 me-1"></i>' . __('Fit', 'uxcustomizer') . '</button>';
+        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-export"'
+            . ' title="' . htmlspecialchars(__('Download the current view as a PNG image', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
+            . '<i class="ti ti-photo-down me-1"></i>' . __('Export PNG', 'uxcustomizer') . '</button>';
         // Layout mode. Default Force here: the org-wide graph can be large
         // and disconnected, where the organic layout reads better; "Flow"
         // (dagre LR — native Impact Analysis look) is one click away.
@@ -360,6 +363,15 @@ if ($activeTab === 'impactmap') {
         echo '<option value="tree">' . __('Tree (top-down)', 'uxcustomizer') . '</option>';
         echo '</select>';
         echo '</div>';
+
+        // Auto-group by type (iTop-style). Default ON for the org-wide view —
+        // this is where same-type hairballs happen.
+        echo '<label class="form-check form-switch d-inline-flex align-items-center mb-0 ms-2"'
+            . ' title="' . htmlspecialchars(sprintf(__('Collapse loose nodes into one group per type when a type has more than %d nodes', 'uxcustomizer'), 8), ENT_QUOTES, 'UTF-8') . '">';
+        echo '<input class="form-check-input uxc-impact-autogroup" type="checkbox" checked>';
+        echo '<span class="form-check-label small ms-1">' . __('Auto-group types', 'uxcustomizer') . '</span>';
+        echo '</label>';
+
         echo '<span class="uxc-impact-status"></span>';
         echo '</div>';
 
@@ -430,6 +442,15 @@ if ($activeTab === 'impactmap' && Config::isModuleEnabled('impactmap')) {
             'layout_force' => __('Force layout', 'uxcustomizer'),
             'show_type'    => __('Click to show', 'uxcustomizer'),
             'hide_type'    => __('Click to hide', 'uxcustomizer'),
+            'health'       => __('Health', 'uxcustomizer'),
+            'health_ok'    => __('good', 'uxcustomizer'),
+            'health_warn'  => __('warning', 'uxcustomizer'),
+            'health_crit'  => __('critical', 'uxcustomizer'),
+            'open_tickets' => __('Open tickets', 'uxcustomizer'),
+            'agent_seen'   => __('Agent seen', 'uxcustomizer'),
+            'today'        => __('today', 'uxcustomizer'),
+            'days_ago'     => __('days ago', 'uxcustomizer'),
+            'type_group'   => __('Type group', 'uxcustomizer'),
         ],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>';
     echo '<script src="' . $asset('public/js/vis-network.min.js') . '"></script>';

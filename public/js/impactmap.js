@@ -51,6 +51,9 @@
     // Depth selects (only present in the on-asset tab; null on the config page).
     const fwdSel = root.querySelector('.uxc-impact-forward');
     const bwdSel = root.querySelector('.uxc-impact-backward');
+    // Auto-group-by-type checkbox + PNG export button.
+    const groupChk = root.querySelector('.uxc-impact-autogroup');
+    const btnExport = root.querySelector('.uxc-impact-export');
 
     let network = null;
     let nodesDS = null;
@@ -59,7 +62,13 @@
     let allEdges = []; // raw payload
     let compounds = []; // [{id,name,color,count}]
     let clusterIdByCompound = {}; // compoundId -> cluster id
+    let typeClusterIds = {}; // itemtype -> cluster id (auto-grouping)
+    let clusterMeta = {}; // cluster id -> {name, color, count, kind: 'compound'|'type'}
     let typeStyles = {}; // itemtype -> {color, border, icon, label}
+
+    // iTop-style auto-grouping: when more than this many LOOSE nodes of the
+    // same itemtype are on the canvas, collapse them into one type cluster.
+    const TYPE_GROUP_THRESHOLD = 8;
 
     // ── Reactive UI state ────────────────────────────────────────────────────
     const state = {
@@ -128,6 +137,9 @@
         });
     }
 
+    // Health overlay colors (SysAid/ServiceNow-style status on the map).
+    const HEALTH_BORDER = { crit: '#d63939', warn: '#f59f00' };
+
     function buildVisNodes() {
         return allNodes.map(n => {
             typeStyles[n.itemtype] = {
@@ -136,6 +148,11 @@
                 icon: n.icon,
                 label: (n.label_type || n.itemtype),
             };
+            // Health overlay: warn/crit nodes get a thick status border. 'ok'
+            // and unknown stay with the itemtype border (no noise).
+            const level = n.health && n.health.level;
+            const border = HEALTH_BORDER[level] || n.border;
+            const borderWidth = HEALTH_BORDER[level] ? 3 : 2;
             return {
                 id: n.id,
                 label: n.name,
@@ -143,10 +160,11 @@
                 shape: 'box',
                 color: {
                     background: n.color,
-                    border: n.border,
-                    highlight: { background: n.color, border: '#111827' },
-                    hover: { background: n.color, border: '#111827' },
+                    border: border,
+                    highlight: { background: n.color, border: HEALTH_BORDER[level] || '#111827' },
+                    hover: { background: n.color, border: HEALTH_BORDER[level] || '#111827' },
                 },
+                borderWidth: borderWidth,
                 font: { color: pickFontColor(n.color), size: 13, face: 'inherit' },
                 shapeProperties: { borderRadius: 6 },
                 margin: 8,
@@ -158,6 +176,7 @@
                 _name: n.name,
                 _url: n.url,
                 _compoundId: n.compoundId,
+                _health: n.health || null,
             };
         });
     }
@@ -342,6 +361,8 @@
         nodesDS = null;
         edgesDS = null;
         clusterIdByCompound = {};
+        typeClusterIds = {};
+        clusterMeta = {};
         state.hiddenTypes = new Set();
         state.search = '';
         if (searchEl) searchEl.value = '';
@@ -487,7 +508,7 @@
             // would leak into flow/force renders as a stale "arrangement".
             savePositions();
         }
-        clusterAllCompounds();
+        reclusterAll();
         buildLegend();
         if (!fromPhysics) {
             network.fit();
@@ -522,12 +543,70 @@
 
     // ── Clustering ──────────────────────────────────────────────────────────
 
-    function clusterAllCompounds() {
+    function reclusterAll() {
         clusterIdByCompound = {};
         compounds.forEach(c => clusterCompound(c.id));
+        if (groupChk && groupChk.checked) {
+            clusterLooseTypes();
+        }
         // After all clusters are formed, label merged cluster edges with their
         // base-edge count ("3 conn." Faddom-style).
         labelAllClusterEdges();
+    }
+
+    /**
+     * iTop-style auto-grouping: collapse loose nodes (not inside any cluster)
+     * into one cluster per itemtype when the type exceeds the threshold.
+     * Dashed border distinguishes auto type groups from named compounds.
+     */
+    function clusterLooseTypes() {
+        if (!network) return;
+        typeClusterIds = {};
+        // Count loose nodes per type (findNode path length 1 = top level).
+        const looseByType = {};
+        nodesDS.getIds().forEach(id => {
+            let path = [];
+            try { path = network.findNode(id); } catch (e) { return; }
+            if (path.length === 1) {
+                const n = nodesDS.get(id);
+                if (n && !n.hidden) {
+                    (looseByType[n._itemtype] = looseByType[n._itemtype] || []).push(id);
+                }
+            }
+        });
+        Object.entries(looseByType).forEach(([itemtype, ids]) => {
+            if (ids.length <= TYPE_GROUP_THRESHOLD) return;
+            const style = typeStyles[itemtype] || { color: '#9CA3AF', label: itemtype };
+            const clusterId = 'type:' + itemtype;
+            const idSet = new Set(ids);
+            network.cluster({
+                joinCondition: nodeOpts => idSet.has(nodeOpts.id),
+                processProperties: (clusterOptions, childNodes) => {
+                    clusterOptions.label = (style.label || itemtype) + ' (' + childNodes.length + ')';
+                    clusterMeta[clusterId] = {
+                        name: style.label || itemtype,
+                        color: style.color,
+                        count: childNodes.length,
+                        kind: 'type',
+                    };
+                    return clusterOptions;
+                },
+                clusterNodeProperties: {
+                    id: clusterId,
+                    shape: 'box',
+                    margin: 12,
+                    borderWidth: 2,
+                    color: {
+                        background: style.color,
+                        border: '#111827',
+                        highlight: { background: style.color, border: '#111827' },
+                    },
+                    font: { color: pickFontColor(style.color), size: 14, face: 'inherit' },
+                    shapeProperties: { borderRadius: 8, borderDashes: [6, 4] },
+                },
+            });
+            typeClusterIds[itemtype] = clusterId;
+        });
     }
 
     function clusterCompound(compoundId) {
@@ -539,6 +618,12 @@
             joinCondition: nodeOpts => nodeOpts._compoundId === compoundId,
             processProperties: (clusterOptions, childNodes) => {
                 clusterOptions.label = meta.name + ' (' + childNodes.length + ')';
+                clusterMeta[clusterId] = {
+                    name: meta.name,
+                    color: meta.color || '#6B7280',
+                    count: childNodes.length,
+                    kind: 'compound',
+                };
                 return clusterOptions;
             },
             clusterNodeProperties: {
@@ -569,6 +654,13 @@
                     break;
                 }
             }
+            for (const k of Object.keys(typeClusterIds)) {
+                if (typeClusterIds[k] === clusterId) {
+                    delete typeClusterIds[k];
+                    break;
+                }
+            }
+            delete clusterMeta[clusterId];
             // Re-apply filter so newly-revealed raw nodes respect the legend.
             applyTypeFilter();
             // Members just got real on-canvas positions — persist them.
@@ -576,11 +668,17 @@
         }
     }
 
+    function allClusterIds() {
+        return Object.values(clusterIdByCompound).concat(Object.values(typeClusterIds));
+    }
+
     function expandAll() {
-        Object.values(clusterIdByCompound).forEach(id => {
+        allClusterIds().forEach(id => {
             if (network.isCluster(id)) network.openCluster(id);
         });
         clusterIdByCompound = {};
+        typeClusterIds = {};
+        clusterMeta = {};
         applyTypeFilter();
         savePositions();
     }
@@ -593,7 +691,7 @@
      */
     function labelAllClusterEdges() {
         if (!network) return;
-        Object.values(clusterIdByCompound).forEach(clusterId => {
+        allClusterIds().forEach(clusterId => {
             if (!network.isCluster(clusterId)) return;
             const eids = network.getConnectedEdges(clusterId);
             eids.forEach(eid => {
@@ -722,11 +820,11 @@
      * computed positions so groups land where their content belongs.
      */
     function repositionClusters(pos) {
-        Object.entries(clusterIdByCompound).forEach(([compoundId, clusterId]) => {
+        const moveToMemberAvg = (clusterId, isMember) => {
             if (!network.isCluster(clusterId)) return;
             let sx = 0, sy = 0, n = 0;
             nodesDS.get().forEach(node => {
-                if (node._compoundId === Number(compoundId) && pos[node.id]) {
+                if (isMember(node) && pos[node.id]) {
                     sx += pos[node.id].x;
                     sy += pos[node.id].y;
                     n++;
@@ -735,6 +833,12 @@
             if (n > 0) {
                 try { network.moveNode(clusterId, sx / n, sy / n); } catch (e) { /* ignore */ }
             }
+        };
+        Object.entries(clusterIdByCompound).forEach(([compoundId, clusterId]) => {
+            moveToMemberAvg(clusterId, node => node._compoundId === Number(compoundId));
+        });
+        Object.entries(typeClusterIds).forEach(([itemtype, clusterId]) => {
+            moveToMemberAvg(clusterId, node => node._itemtype === itemtype);
         });
     }
 
@@ -773,6 +877,38 @@
         }
     }
 
+    // ── PNG export ──────────────────────────────────────────────────────────
+
+    /**
+     * Snapshot the network canvas onto a solid background (the raw canvas is
+     * transparent — pasted into docs it would look broken) and download it.
+     */
+    function exportPng() {
+        if (!network) return;
+        let src;
+        try {
+            src = network.canvas.frame.canvas;
+        } catch (e) {
+            return;
+        }
+        const out = document.createElement('canvas');
+        out.width = src.width;
+        out.height = src.height;
+        const ctx = out.getContext('2d');
+        const bg = getComputedStyle(canvas.closest('.uxc-impact-stage') || canvas).backgroundColor;
+        ctx.fillStyle = (bg && bg !== 'rgba(0, 0, 0, 0)') ? bg : '#ffffff';
+        ctx.fillRect(0, 0, out.width, out.height);
+        ctx.drawImage(src, 0, 0);
+
+        const a = document.createElement('a');
+        const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+        a.download = 'impact-map-' + stamp + '.png';
+        a.href = out.toDataURL('image/png');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
     // ── Event wiring ────────────────────────────────────────────────────────
 
     function bindEvents() {
@@ -787,8 +923,7 @@
         network.on('selectNode', params => {
             const id = params.nodes[0];
             if (network.isCluster(id)) {
-                const meta = compounds.find(c => clusterIdByCompound[c.id] === id);
-                showClusterPanel(meta);
+                showClusterPanel(clusterMeta[id], id);
             } else {
                 const node = nodesDS.get(id);
                 showNodePanel(node);
@@ -808,7 +943,26 @@
             btnExpandAll.addEventListener('click', () => expandAll());
         }
         if (btnCollapseAll) {
-            btnCollapseAll.addEventListener('click', () => clusterAllCompounds());
+            btnCollapseAll.addEventListener('click', () => reclusterAll());
+        }
+        if (groupChk) {
+            groupChk.addEventListener('change', () => {
+                if (groupChk.checked) {
+                    clusterLooseTypes();
+                    labelAllClusterEdges();
+                } else {
+                    // Open only the auto type groups; named compounds stay.
+                    Object.values(typeClusterIds).forEach(id => {
+                        if (network.isCluster(id)) network.openCluster(id);
+                        delete clusterMeta[id];
+                    });
+                    typeClusterIds = {};
+                    applyTypeFilter();
+                }
+            });
+        }
+        if (btnExport) {
+            btnExport.addEventListener('click', exportPng);
         }
         if (btnFit) {
             btnFit.addEventListener('click', () => network.fit({ animation: { duration: 400 } }));
@@ -826,6 +980,26 @@
     function showNodePanel(node) {
         if (!node || !sidePanel) return;
         const style = typeStyles[node._itemtype] || { color: '#9CA3AF', label: node._itemtype, icon: 'ti ti-package' };
+
+        // Health rows (only signals that exist — no "unknown" filler).
+        let healthRows = '';
+        const h = node._health;
+        if (h && h.level) {
+            const dot = h.level === 'crit' ? '#d63939' : (h.level === 'warn' ? '#f59f00' : '#2fb344');
+            healthRows += '<dt>' + t('health', 'Health') + '</dt><dd>' +
+                '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + dot + ';margin-right:0.35rem"></span>' +
+                escapeHtml(t('health_' + h.level, h.level)) + '</dd>';
+            if (typeof h.tickets === 'number') {
+                healthRows += '<dt>' + t('open_tickets', 'Open tickets') + '</dt><dd>' + escapeHtml(h.tickets) + '</dd>';
+            }
+            if (typeof h.agent_days === 'number') {
+                healthRows += '<dt>' + t('agent_seen', 'Agent seen') + '</dt><dd>' +
+                    (h.agent_days === 0
+                        ? escapeHtml(t('today', 'today'))
+                        : escapeHtml(h.agent_days) + ' ' + escapeHtml(t('days_ago', 'days ago'))) + '</dd>';
+            }
+        }
+
         sidePanel.innerHTML =
             '<div class="uxc-impact-side-head" style="background:' + escapeHtml(style.color) + ';color:' + pickFontColor(style.color) + '">' +
                 '<i class="' + escapeHtml(style.icon || 'ti ti-package') + ' me-2"></i>' +
@@ -835,6 +1009,7 @@
                 '<dl class="uxc-impact-kv">' +
                     '<dt>' + t('type', 'Type') + '</dt><dd>' + escapeHtml(style.label || node._itemtype) + '</dd>' +
                     '<dt>' + t('id', 'ID') + '</dt><dd>#' + escapeHtml(node._items_id) + '</dd>' +
+                    healthRows +
                 '</dl>' +
                 '<a class="btn btn-primary btn-sm" href="' + escapeHtml(node._url) + '">' +
                     '<i class="ti ti-external-link me-1"></i>' + t('open_in_glpi', 'Open in GLPI') +
@@ -843,16 +1018,18 @@
         sidePanel.classList.add('uxc-impact-side--open');
     }
 
-    function showClusterPanel(meta) {
+    function showClusterPanel(meta, clusterId) {
         if (!meta || !sidePanel) return;
+        const icon = meta.kind === 'type' ? 'ti ti-category' : 'ti ti-stack-2';
+        const kindLabel = meta.kind === 'type' ? t('type_group', 'Type group') : t('group', 'Group');
         sidePanel.innerHTML =
             '<div class="uxc-impact-side-head" style="background:' + escapeHtml(meta.color || '#6B7280') + ';color:' + pickFontColor(meta.color || '#6B7280') + '">' +
-                '<i class="ti ti-stack-2 me-2"></i>' +
+                '<i class="' + icon + ' me-2"></i>' +
                 '<strong>' + escapeHtml(meta.name) + '</strong>' +
             '</div>' +
             '<div class="uxc-impact-side-body">' +
                 '<dl class="uxc-impact-kv">' +
-                    '<dt>' + t('group', 'Group') + '</dt><dd>' + escapeHtml(meta.name) + '</dd>' +
+                    '<dt>' + kindLabel + '</dt><dd>' + escapeHtml(meta.name) + '</dd>' +
                     '<dt>' + t('members', 'Members') + '</dt><dd>' + escapeHtml(meta.count) + '</dd>' +
                 '</dl>' +
                 '<button class="btn btn-outline-primary btn-sm uxc-impact-expand-this">' +
@@ -862,7 +1039,7 @@
         const btn = sidePanel.querySelector('.uxc-impact-expand-this');
         if (btn) {
             btn.addEventListener('click', () => {
-                expandCluster(clusterIdByCompound[meta.id]);
+                expandCluster(clusterId);
                 sidePanel.classList.remove('uxc-impact-side--open');
             });
         }

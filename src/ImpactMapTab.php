@@ -134,6 +134,9 @@ class ImpactMapTab extends CommonGLPI
             . '<i class="ti ti-arrows-maximize me-1"></i>' . __('Expand all', 'uxcustomizer') . '</button>';
         echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-fit">'
             . '<i class="ti ti-focus-2 me-1"></i>' . __('Fit', 'uxcustomizer') . '</button>';
+        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-export"'
+            . ' title="' . htmlspecialchars(__('Download the current view as a PNG image', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
+            . '<i class="ti ti-photo-down me-1"></i>' . __('Export PNG', 'uxcustomizer') . '</button>';
         // Layout mode. "Flow" = dagre LR, the same layered look as GLPI's
         // native Impact Analysis — default here so the tab feels familiar.
         echo '<div class="d-inline-flex align-items-center ms-1">';
@@ -169,6 +172,14 @@ class ImpactMapTab extends CommonGLPI
         }
         echo '</select>';
         echo '</div>';
+
+        // Auto-group by type (iTop-style). Off by default here: depth-scoped
+        // asset views are small; the org-wide config page defaults it on.
+        echo '<label class="form-check form-switch d-inline-flex align-items-center mb-0 ms-2"'
+            . ' title="' . htmlspecialchars(sprintf(__('Collapse loose nodes into one group per type when a type has more than %d nodes', 'uxcustomizer'), 8), ENT_QUOTES, 'UTF-8') . '">';
+        echo '<input class="form-check-input uxc-impact-autogroup" type="checkbox">';
+        echo '<span class="form-check-label small ms-1">' . __('Auto-group types', 'uxcustomizer') . '</span>';
+        echo '</label>';
 
         echo '<span class="uxc-impact-status"></span>';
         echo '</div>';
@@ -229,6 +240,15 @@ class ImpactMapTab extends CommonGLPI
             'hide_type'    => __('Click to hide', 'uxcustomizer'),
             'forward'      => __('Forward', 'uxcustomizer'),
             'backward'     => __('Backward', 'uxcustomizer'),
+            'health'       => __('Health', 'uxcustomizer'),
+            'health_ok'    => __('good', 'uxcustomizer'),
+            'health_warn'  => __('warning', 'uxcustomizer'),
+            'health_crit'  => __('critical', 'uxcustomizer'),
+            'open_tickets' => __('Open tickets', 'uxcustomizer'),
+            'agent_seen'   => __('Agent seen', 'uxcustomizer'),
+            'today'        => __('today', 'uxcustomizer'),
+            'days_ago'     => __('days ago', 'uxcustomizer'),
+            'type_group'   => __('Type group', 'uxcustomizer'),
         ];
     }
 }

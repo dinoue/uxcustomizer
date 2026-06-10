@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-06-10
+
+### Added
+- **Health overlay on the map** (SysAid/ServiceNow-style) — nodes with open tickets (status new/assigned/planned/waiting) or a silent inventory agent (>2 days) get a thick **amber** (one issue) or **red** (both) status border. The side panel shows the detail: health level, open-ticket count, agent last-seen. Tooltips carry the same info. Nodes with no signal stay clean — no "unknown" noise. Data comes from two **batched** queries (`glpi_items_tickets`+`glpi_tickets`, `glpi_agents`) — never per-node.
+- **Auto-group by type** (iTop-style) — a toolbar switch that collapses loose nodes into one dashed-border cluster per itemtype ("Computer (14)") whenever a type has more than 8 nodes on the canvas. Double-click expands, "N conn." edge labels and the side panel work on type groups exactly like on compounds. Default **on** for the org-wide config view (where hairballs live), **off** on the asset tab (depth-scoped graphs are small).
+- **Export PNG** — toolbar button downloads the current view as `impact-map-<date>.png`, composited onto a solid background so it pastes cleanly into documents.
+
 ## [1.8.0] - 2026-06-10
 
 ### Added

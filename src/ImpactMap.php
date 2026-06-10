@@ -254,6 +254,10 @@ class ImpactMap
         }
         $names = self::resolveNames($byType);
 
+        // ── 6b. Health signals (batched — never per-node queries) ───────────
+        $ticketCounts = self::openTicketCounts($byType); // null if source unavailable
+        $agentDays    = self::agentStaleness($byType);   // itemtype => id => days
+
         // ── 7. Read compound memberships ─────────────────────────────────────
         $memberCompound = []; // 'Type:id' => parent_compound_id
         if ($DB->tableExists('glpi_impactitems')) {
@@ -305,11 +309,35 @@ class ImpactMap
             $compound = $memberCompound[$key] ?? null;
             $url      = $root . '/front/' . $n['itemtype'] . '.form.php?id=' . $n['items_id'];
 
+            // Health: combine open-ticket and agent-staleness signals. A node
+            // with no signal at all gets level=null (no overlay, no noise).
+            $tickets = ($ticketCounts === null)
+                ? null
+                : (int) ($ticketCounts[$n['itemtype']][$n['items_id']] ?? 0);
+            $aDays   = $agentDays[$n['itemtype']][$n['items_id']] ?? null;
+            $signals = 0;
+            $issues  = 0;
+            if ($tickets !== null) { $signals++; if ($tickets > 0) { $issues++; } }
+            if ($aDays !== null)   { $signals++; if ($aDays > 2)   { $issues++; } }
+            $level = $signals === 0 ? null : ($issues === 0 ? 'ok' : ($issues >= 2 ? 'crit' : 'warn'));
+
             // Tooltip — vis-network renders this as plain text by default; the
             // client opts into HTML rendering. All values HTML-escaped here.
+            $tipExtra = '';
+            if ($tickets !== null && $tickets > 0) {
+                $tipExtra .= '<div class="uxc-impact-tip-sub">'
+                    . sprintf(_n('%d open ticket', '%d open tickets', $tickets, 'uxcustomizer'), $tickets)
+                    . '</div>';
+            }
+            if ($aDays !== null && $aDays > 2) {
+                $tipExtra .= '<div class="uxc-impact-tip-sub">'
+                    . sprintf(__('Agent silent for %d days', 'uxcustomizer'), $aDays)
+                    . '</div>';
+            }
             $title = '<div class="uxc-impact-tip">'
                 . '<strong>' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '</strong>'
                 . '<div class="uxc-impact-tip-sub">' . htmlspecialchars($style['label'], ENT_QUOTES, 'UTF-8') . '</div>'
+                . $tipExtra
                 . '</div>';
 
             $nodes[] = [
@@ -325,6 +353,11 @@ class ImpactMap
                 'compoundId' => $compound,
                 'url'        => $url,
                 'title'      => $title,
+                'health'     => [
+                    'level'      => $level,
+                    'tickets'    => $tickets,
+                    'agent_days' => $aDays,
+                ],
             ];
         }
 
@@ -414,6 +447,103 @@ class ImpactMap
             } catch (\Throwable $e) {
                 // Non-fatal.
             }
+        }
+        return $out;
+    }
+
+    /**
+     * Open-ticket counts per node, in ONE query (status 1-4 = new / assigned /
+     * planned / waiting — same definition as the Computer Dashboard health).
+     * Over-fetches by id (no per-tuple WHERE) and lets the caller filter via
+     * the (itemtype, id) lookup; that's cheap and keeps the SQL portable.
+     *
+     * @param array<string,int[]> $byType itemtype => ids present in the graph
+     * @return array<string,array<int,int>>|null itemtype => id => count, or
+     *                                           null when sources are missing
+     */
+    private static function openTicketCounts(array $byType): ?array
+    {
+        global $DB;
+
+        if ($byType === []
+            || !$DB->tableExists('glpi_items_tickets')
+            || !$DB->tableExists('glpi_tickets')) {
+            return null;
+        }
+
+        $types  = array_keys($byType);
+        $allIds = [];
+        foreach ($byType as $ids) {
+            foreach ($ids as $id) { $allIds[$id] = true; }
+        }
+
+        $out = [];
+        try {
+            foreach ($DB->request([
+                'SELECT'     => [
+                    'glpi_items_tickets.itemtype',
+                    'glpi_items_tickets.items_id',
+                    'COUNT' => 'glpi_items_tickets.id AS cnt',
+                ],
+                'FROM'       => 'glpi_items_tickets',
+                'INNER JOIN' => ['glpi_tickets' => ['ON' => ['glpi_items_tickets' => 'tickets_id', 'glpi_tickets' => 'id']]],
+                'WHERE'      => [
+                    'glpi_items_tickets.itemtype' => $types,
+                    'glpi_items_tickets.items_id' => array_keys($allIds),
+                    'glpi_tickets.status'         => [1, 2, 3, 4],
+                    'glpi_tickets.is_deleted'     => 0,
+                ],
+                'GROUPBY'    => ['glpi_items_tickets.itemtype', 'glpi_items_tickets.items_id'],
+            ]) as $row) {
+                $out[(string) $row['itemtype']][(int) $row['items_id']] = (int) $row['cnt'];
+            }
+        } catch (\Throwable $e) {
+            return null;
+        }
+        return $out;
+    }
+
+    /**
+     * Days since each node's inventory agent last reported, in ONE query.
+     * Nodes without an agent row simply don't appear (no signal ≠ unhealthy).
+     *
+     * @param array<string,int[]> $byType itemtype => ids present in the graph
+     * @return array<string,array<int,int>> itemtype => id => days since contact
+     */
+    private static function agentStaleness(array $byType): array
+    {
+        global $DB;
+
+        if ($byType === [] || !$DB->tableExists('glpi_agents')) {
+            return [];
+        }
+
+        $types  = array_keys($byType);
+        $allIds = [];
+        foreach ($byType as $ids) {
+            foreach ($ids as $id) { $allIds[$id] = true; }
+        }
+
+        $out = [];
+        try {
+            foreach ($DB->request([
+                'SELECT' => ['itemtype', 'items_id', 'MAX' => 'last_contact AS last'],
+                'FROM'   => 'glpi_agents',
+                'WHERE'  => ['itemtype' => $types, 'items_id' => array_keys($allIds)],
+                'GROUPBY'=> ['itemtype', 'items_id'],
+            ]) as $row) {
+                if (empty($row['last'])) {
+                    continue;
+                }
+                $ts = strtotime((string) $row['last']);
+                if ($ts === false) {
+                    continue;
+                }
+                $out[(string) $row['itemtype']][(int) $row['items_id']]
+                    = max(0, (int) floor((time() - $ts) / 86400));
+            }
+        } catch (\Throwable $e) {
+            return [];
         }
         return $out;
     }

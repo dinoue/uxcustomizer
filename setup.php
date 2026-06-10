@@ -19,7 +19,7 @@ use GlpiPlugin\Uxcustomizer\ImpactMapTab;
 use GlpiPlugin\Uxcustomizer\Menu;
 use GlpiPlugin\Uxcustomizer\MenuOrder;
 
-define('PLUGIN_UXCUSTOMIZER_VERSION',          '1.8.0');
+define('PLUGIN_UXCUSTOMIZER_VERSION',          '1.9.0');
 define('PLUGIN_UXCUSTOMIZER_MIN_GLPI_VERSION', '11.0.0');
 define('PLUGIN_UXCUSTOMIZER_MAX_GLPI_VERSION', '11.0.99');
 
