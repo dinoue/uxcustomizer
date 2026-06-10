@@ -207,6 +207,52 @@
         return url;
     }
 
+    // ── Position persistence (ServiceNow-style stable layout) ───────────────
+    // Saved per scope (full fetch URL = asset + depths) in localStorage. When
+    // a later load finds positions for EVERY node in the graph, they're applied
+    // as preset coordinates and physics is skipped entirely — instant, stable
+    // render. Any topology change (new/removed node) falls back to a seeded
+    // physics run, which is itself deterministic (layout.randomSeed below).
+
+    const POS_STORE = 'uxcImpactPositions';
+    const POS_MAX_SCOPES = 20; // prune oldest beyond this many saved scopes
+
+    function scopeKey() {
+        return buildFetchUrl();
+    }
+
+    function loadSavedPositions() {
+        try {
+            const all = JSON.parse(localStorage.getItem(POS_STORE) || '{}');
+            const entry = all[scopeKey()];
+            return (entry && entry.positions) ? entry.positions : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function savePositions() {
+        if (!network || !nodesDS) return;
+        let pos = {};
+        try {
+            pos = network.getPositions(nodesDS.getIds());
+        } catch (e) {
+            return; // some ids mid-cluster transition — skip this save
+        }
+        try {
+            const all = JSON.parse(localStorage.getItem(POS_STORE) || '{}');
+            all[scopeKey()] = { savedAt: Date.now(), positions: pos };
+            const keys = Object.keys(all);
+            if (keys.length > POS_MAX_SCOPES) {
+                keys.sort((a, b) => (all[a].savedAt || 0) - (all[b].savedAt || 0));
+                keys.slice(0, keys.length - POS_MAX_SCOPES).forEach(k => delete all[k]);
+            }
+            localStorage.setItem(POS_STORE, JSON.stringify(all));
+        } catch (e) {
+            // localStorage full or disabled — persistence is best-effort
+        }
+    }
+
     function init() {
         fetchAndRender();
         // Depth selects trigger a full reload (destroy network → re-fetch).
@@ -264,7 +310,22 @@
             return;
         }
 
-        nodesDS = new vis.DataSet(buildVisNodes());
+        const visNodes = buildVisNodes();
+
+        // Preset layout: if a previous visit saved a position for EVERY node
+        // in this exact scope, reuse them and skip physics entirely.
+        const saved = loadSavedPositions();
+        const preset = !!saved && visNodes.every(
+            n => saved[n.id] && typeof saved[n.id].x === 'number' && typeof saved[n.id].y === 'number'
+        );
+        if (preset) {
+            visNodes.forEach(n => {
+                n.x = saved[n.id].x;
+                n.y = saved[n.id].y;
+            });
+        }
+
+        nodesDS = new vis.DataSet(visNodes);
         edgesDS = new vis.DataSet(buildVisEdges());
 
         const options = {
@@ -283,20 +344,29 @@
                 hoverWidth: 0.5,
                 selectionWidth: 1,
             },
-            physics: {
-                enabled: true,
-                solver: 'forceAtlas2Based',
-                forceAtlas2Based: {
-                    gravitationalConstant: -45,
-                    centralGravity: 0.012,
-                    springLength: 130,
-                    springConstant: 0.08,
-                    damping: 0.6,
-                    avoidOverlap: 0.6,
+            physics: preset
+                ? { enabled: false }
+                : {
+                    enabled: true,
+                    solver: 'forceAtlas2Based',
+                    forceAtlas2Based: {
+                        gravitationalConstant: -45,
+                        centralGravity: 0.012,
+                        springLength: 130,
+                        springConstant: 0.08,
+                        damping: 0.6,
+                        avoidOverlap: 0.6,
+                    },
+                    stabilization: { iterations: 120, fit: true },
                 },
-                stabilization: { iterations: 220, fit: true },
+            layout: {
+                // Fixed seed → the same graph lays out identically on every
+                // load (no more drift between visits). Preset positions ignore
+                // the seed entirely. improvedLayout (Kamada-Kawai pre-pass) is
+                // costly on big graphs — only worth it under ~150 nodes.
+                randomSeed: 116,
+                improvedLayout: visNodes.length <= 150,
             },
-            layout: { improvedLayout: true },
         };
 
         network = new vis.Network(canvas, { nodes: nodesDS, edges: edgesDS }, options);
@@ -304,28 +374,46 @@
         // Re-enable HTML tooltips by patching the rendered title to be a DOM node.
         upgradeHtmlTooltips();
 
-        network.once('stabilizationIterationsDone', () => {
-            network.setOptions({ physics: { enabled: false } });
-            clusterAllCompounds();
-            buildLegend();
-            const noticeParts = [];
-            noticeParts.push(
-                (meta.total_nodes || allNodes.length) + ' ' + t('nodes', 'nodes')
-            );
-            noticeParts.push(
-                (meta.total_edges || allEdges.length) + ' ' + t('relations', 'relations')
-            );
-            if (meta.truncated) {
-                noticeParts.push(
-                    '<span class="text-warning">' +
-                    t('truncated', 'truncated to ') + (meta.max_nodes || allNodes.length) +
-                    '</span>'
-                );
-            }
-            statusEl.innerHTML = noticeParts.join(' · ');
-        });
+        if (preset) {
+            // No physics pass — finalize immediately.
+            finalizeRender(meta, false);
+        } else {
+            network.once('stabilizationIterationsDone', () => finalizeRender(meta, true));
+        }
 
         bindEvents();
+    }
+
+    /**
+     * Post-layout finishing common to both render paths. `fromPhysics` is true
+     * when a stabilization run just ended (positions are fresh → persist them
+     * BEFORE clustering hides member nodes); false on a preset render.
+     */
+    function finalizeRender(meta, fromPhysics) {
+        if (fromPhysics) {
+            network.setOptions({ physics: { enabled: false } });
+            savePositions();
+        }
+        clusterAllCompounds();
+        buildLegend();
+        if (!fromPhysics) {
+            network.fit();
+        }
+        const noticeParts = [];
+        noticeParts.push(
+            (meta.total_nodes || allNodes.length) + ' ' + t('nodes', 'nodes')
+        );
+        noticeParts.push(
+            (meta.total_edges || allEdges.length) + ' ' + t('relations', 'relations')
+        );
+        if (meta.truncated) {
+            noticeParts.push(
+                '<span class="text-warning">' +
+                t('truncated', 'truncated to ') + (meta.max_nodes || allNodes.length) +
+                '</span>'
+            );
+        }
+        statusEl.innerHTML = noticeParts.join(' · ');
     }
 
     function upgradeHtmlTooltips() {
@@ -390,6 +478,8 @@
             }
             // Re-apply filter so newly-revealed raw nodes respect the legend.
             applyTypeFilter();
+            // Members just got real on-canvas positions — persist them.
+            savePositions();
         }
     }
 
@@ -399,6 +489,7 @@
         });
         clusterIdByCompound = {};
         applyTypeFilter();
+        savePositions();
     }
 
     /**
@@ -558,6 +649,14 @@
             }
         });
         network.on('deselectNode', () => sidePanel.classList.remove('uxc-impact-side--open'));
+
+        // Manual node moves are the user telling us where things belong —
+        // persist so the arrangement survives reloads (ServiceNow behaviour).
+        network.on('dragEnd', params => {
+            if (params.nodes && params.nodes.length) {
+                savePositions();
+            }
+        });
 
         if (btnExpandAll) {
             btnExpandAll.addEventListener('click', () => expandAll());

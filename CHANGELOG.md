@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-06-10
+
+### Added
+- **Stable, persistent node positions (ServiceNow-style)** — the Impact Map now remembers where nodes are. After the first layout (and after any manual drag, group expand, or "Expand all"), positions are saved per scope (asset + depths) in the browser's localStorage. The next load applies them as preset coordinates and **skips physics entirely** — instant render, zero drift. Saved scopes are capped at 20 (oldest pruned).
+
+### Changed
+- **Deterministic layout** — `layout.randomSeed` is now fixed, so even a first-time render of the same graph produces the same picture on every load (previously each load used a random seed and the layout drifted).
+- **Faster first loads** — physics stabilization cut from 220 to 120 iterations, and the costly `improvedLayout` pre-pass is skipped above 150 nodes. Subsequent loads of a known graph skip physics entirely via saved positions.
+
+### Notes
+- Evaluated (and rejected) patching GLPI's native Impact Analysis with dagre: GLPI 11's native impact page uses **Cytoscape.js** (not vis.js), already lays out with **dagre LR**, and already persists positions via `glpi_impactcontexts` — the drift/speed issues were in our vis-network module, fixed here without touching core.
+
 ## [1.6.1] - 2026-06-09
 
 ### Fixed
