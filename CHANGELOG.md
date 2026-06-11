@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-06-10
+
+### Added
+- **Impact Map on Ticket, Change and Problem forms** (SysAid-style "business impact in the ticket") — a new "Impact Map" tab on ITIL objects shows the **combined neighborhood of every asset linked to the object**: a technician triaging an incident, or a change manager assessing risk, sees the blast radius without leaving the form. Multi-seed bounded BFS (Forward/Backward depth selectors work as on assets); assets linked to the ticket but absent from the impact graph still appear as isolated nodes so nothing linked is invisible. **Seed assets are emphasized** (thicker dark border, larger label) — health colors still take precedence so problem nodes stay red/amber. No GLPI plugin offers this today.
+
+### Changed
+- **Per-scope rights model on the data endpoint** (was: super-admin for everything, which silently broke the asset tab for technicians):
+  - org-wide view (Setup page) — still requires `config UPDATE`;
+  - asset scope — requires **READ on that asset**;
+  - ITIL scope — requires **READ on that Ticket/Change/Problem** (entity and visibility rules respected); the linked-asset seed list is resolved **server-side**, never accepted from the client.
+
 ## [1.9.0] - 2026-06-10
 
 ### Added

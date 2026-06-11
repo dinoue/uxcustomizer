@@ -76,6 +76,8 @@ Color-coded by itemtype with an auto-generated legend. Capped at 750 nodes per r
 
 **Also available as an on-asset tab** — Computer and Appliance forms get an "Impact Map" tab next to GLPI's native "Impact Analysis" tab. The on-asset version is **scoped to the subgraph connected to the current CI** using a bounded directed BFS: `forward` hops along arrows OUT (impacts) and `backward` hops along arrows IN (impacted by), independently. Two depth selectors in the toolbar let you dial each from **1 to 5** (default 2/2, matching GLPI's native impact analysis density). The native Impact Analysis tab keeps working untouched. Use Tab Order to position the new tab where you want it.
 
+**And on Ticket / Change / Problem forms** — the same tab on ITIL objects shows the combined neighborhood of **every asset linked to the object** (multi-seed BFS, server-side resolution, READ rights on the object enforced). Seed assets are emphasized; linked assets with no impact relations still appear as isolated nodes. Blast radius during triage, change-risk assessment during planning — without leaving the form.
+
 ## How it works
 
 - **Menu Order** registers a `redefine_menus` callback. GLPI renders the sidebar from the array this hook returns, so the plugin re-keys it into the saved per-profile order. It never mutates session state directly.
@@ -106,10 +108,10 @@ Produces `dist/glpi-uxcustomizer-<VERSION>.tar.bz2`, excluding everything listed
 2. Push this repository to `github.com/bacus99/GLPI_UXCustomizer` (must be public).
 3. Tag and publish the build:
    ```bash
-   git tag -a 1.9.0 -m "Release 1.9.0"
+   git tag -a 2.0.0 -m "Release 2.0.0"
    git push --tags
-   gh release create 1.9.0 dist/glpi-uxcustomizer-1.9.0.tar.bz2 \
-       --title "1.9.0" --notes-from-tag
+   gh release create 2.0.0 dist/glpi-uxcustomizer-2.0.0.tar.bz2 \
+       --title "2.0.0" --notes-from-tag
    ```
 4. Verify every URL in `plugin.xml` resolves (logo, homepage, issues, readme, and the `download_url`).
 5. Submit to the [GLPI plugin catalog](https://plugins.glpi-project.org/) by opening a Pull Request to [pluginsGLPI/data](https://github.com/pluginsGLPI/data) adding your `plugin.xml` URL to `xml/plugins.json`.

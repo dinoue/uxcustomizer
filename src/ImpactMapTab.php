@@ -31,13 +31,20 @@ use CommonGLPI;
 class ImpactMapTab extends CommonGLPI
 {
     /**
-     * Itemtypes that receive this tab. Each must:
+     * Asset itemtypes that receive this tab. Each must:
      *   1. Exist as a class in the running GLPI install.
      *   2. Be present in ImpactMap::knownItemtypes() so the ajax scope
      *      whitelist accepts it.
      * Adding more itemtypes here is the only step needed to expand coverage.
      */
     public const ITEMTYPES = ['Computer', 'Appliance'];
+
+    /**
+     * ITIL itemtypes that receive this tab (SysAid-style "business impact in
+     * the ticket"). The map is seeded by ALL assets linked to the object —
+     * a technician sees the blast radius without leaving the ticket.
+     */
+    public const ITIL_ITEMTYPES = ['Ticket', 'Change', 'Problem'];
 
     public static function getTypeName($nb = 0): string
     {
@@ -55,7 +62,9 @@ class ImpactMapTab extends CommonGLPI
         if (!method_exists($item, 'isNewItem') || $item->isNewItem()) {
             return '';
         }
-        if (!in_array(get_class($item), self::ITEMTYPES, true)) {
+        $class = get_class($item);
+        if (!in_array($class, self::ITEMTYPES, true)
+            && !in_array($class, self::ITIL_ITEMTYPES, true)) {
             return '';
         }
         if (!Config::isModuleEnabled('impactmap')) {
@@ -81,16 +90,17 @@ class ImpactMapTab extends CommonGLPI
         if (!method_exists($item, 'isNewItem') || $item->isNewItem()) {
             return false;
         }
-        if (!in_array(get_class($item), self::ITEMTYPES, true)) {
+        $itemtype = get_class($item);
+        $isItil   = in_array($itemtype, self::ITIL_ITEMTYPES, true);
+        if (!$isItil && !in_array($itemtype, self::ITEMTYPES, true)) {
             return false;
         }
         if (!Config::isModuleEnabled('impactmap')) {
             return false;
         }
 
-        $rootDoc  = $CFG_GLPI['root_doc'] ?? '';
-        $itemtype = get_class($item);
-        $itemId   = (int) $item->getID();
+        $rootDoc = $CFG_GLPI['root_doc'] ?? '';
+        $itemId  = (int) $item->getID();
 
         // Cache-busted asset URL builder (file mtime → fall back to plugin version).
         $asset = static function (string $rel) use ($rootDoc): string {
@@ -98,11 +108,13 @@ class ImpactMapTab extends CommonGLPI
             return $rootDoc . '/plugins/uxcustomizer/' . $rel . '?v=' . $v;
         };
 
-        // The dataUrl is bare itemtype+items_id; the JS appends &forward=&backward=
-        // from the depth selects on each fetch (initial + every change).
+        // The dataUrl carries only the scope identity; the JS appends
+        // &forward=&backward= from the depth selects on each fetch.
+        // ITIL scope: the SERVER resolves the linked assets (rights-checked).
         $dataUrl = $rootDoc . '/plugins/uxcustomizer/ajax/impactmap.php'
-            . '?itemtype=' . urlencode($itemtype)
-            . '&items_id=' . $itemId;
+            . ($isItil
+                ? '?itil_itemtype=' . urlencode($itemtype) . '&itil_items_id=' . $itemId
+                : '?itemtype=' . urlencode($itemtype) . '&items_id=' . $itemId);
 
         // Default BFS depths (forward = arrows out / impacts; backward = arrows in / impacted by).
         $defaultForward  = 2;
@@ -116,7 +128,9 @@ class ImpactMapTab extends CommonGLPI
         echo '<i class="ti ti-affiliate me-2" style="font-size:1.5rem"></i>';
         echo '<h3 class="m-0">' . __('Impact Map', 'uxcustomizer') . '</h3>';
         echo '<span class="text-muted ms-3 small">'
-            . __('Subgraph connected to this asset. Native GLPI Impact Analysis is the source of truth.', 'uxcustomizer')
+            . ($isItil
+                ? __('Combined neighborhood of every asset linked to this object. Seed assets are emphasized.', 'uxcustomizer')
+                : __('Subgraph connected to this asset. Native GLPI Impact Analysis is the source of truth.', 'uxcustomizer'))
             . '</span>';
         echo '</div>';
 
@@ -192,7 +206,9 @@ class ImpactMapTab extends CommonGLPI
         echo '<aside class="uxc-impact-side" aria-live="polite"></aside>';
         echo '<div class="uxc-impact-empty" style="display:none"><div>'
             . '<i class="ti ti-affiliate-off mb-2" style="font-size:2rem"></i><br>'
-            . __('No impact relations linked to this asset. Use the native Impact Analysis tab to start linking items.', 'uxcustomizer')
+            . ($isItil
+                ? __('No mappable assets are linked to this object (see its Items tab).', 'uxcustomizer')
+                : __('No impact relations linked to this asset. Use the native Impact Analysis tab to start linking items.', 'uxcustomizer'))
             . '</div></div>';
         echo '</div>';
 

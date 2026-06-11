@@ -150,9 +150,13 @@
             };
             // Health overlay: warn/crit nodes get a thick status border. 'ok'
             // and unknown stay with the itemtype border (no noise).
+            // Seed nodes (the scoped asset / the ticket's linked assets) are
+            // emphasized: thicker dark border + larger label — health colors
+            // still win over the seed border so problems stay visible.
             const level = n.health && n.health.level;
-            const border = HEALTH_BORDER[level] || n.border;
-            const borderWidth = HEALTH_BORDER[level] ? 3 : 2;
+            const isSeed = !!n.seed;
+            const border = HEALTH_BORDER[level] || (isSeed ? '#111827' : n.border);
+            const borderWidth = (HEALTH_BORDER[level] || isSeed) ? 3 : 2;
             return {
                 id: n.id,
                 label: n.name,
@@ -165,7 +169,7 @@
                     hover: { background: n.color, border: HEALTH_BORDER[level] || '#111827' },
                 },
                 borderWidth: borderWidth,
-                font: { color: pickFontColor(n.color), size: 13, face: 'inherit' },
+                font: { color: pickFontColor(n.color), size: isSeed ? 14 : 13, face: 'inherit' },
                 shapeProperties: { borderRadius: 6 },
                 margin: 8,
                 widthConstraint: { minimum: 60, maximum: 180 },

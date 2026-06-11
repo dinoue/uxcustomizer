@@ -19,7 +19,7 @@ use GlpiPlugin\Uxcustomizer\ImpactMapTab;
 use GlpiPlugin\Uxcustomizer\Menu;
 use GlpiPlugin\Uxcustomizer\MenuOrder;
 
-define('PLUGIN_UXCUSTOMIZER_VERSION',          '1.9.0');
+define('PLUGIN_UXCUSTOMIZER_VERSION',          '2.0.0');
 define('PLUGIN_UXCUSTOMIZER_MIN_GLPI_VERSION', '11.0.0');
 define('PLUGIN_UXCUSTOMIZER_MAX_GLPI_VERSION', '11.0.99');
 
@@ -65,12 +65,14 @@ function plugin_init_uxcustomizer(): void
             Plugin::registerClass(ComputerDashboard::class, ['addtabon' => ['Computer']]);
         }
 
-        // Impact Map — adds an "Impact Map" tab to Computer and Appliance
-        // forms, coexisting with GLPI's native "Impact Analysis" tab. The new
-        // tab renders the same vis-network view as the config page, but
-        // scoped to the subgraph connected to the current asset.
+        // Impact Map — adds an "Impact Map" tab to asset forms (Computer,
+        // Appliance — coexists with GLPI's native "Impact Analysis" tab) AND
+        // to ITIL objects (Ticket, Change, Problem) where the map is seeded
+        // by the assets linked to the object: blast radius during triage.
         if (Config::isModuleEnabled('impactmap')) {
-            Plugin::registerClass(ImpactMapTab::class, ['addtabon' => ImpactMapTab::ITEMTYPES]);
+            Plugin::registerClass(ImpactMapTab::class, [
+                'addtabon' => array_merge(ImpactMapTab::ITEMTYPES, ImpactMapTab::ITIL_ITEMTYPES),
+            ]);
         }
     } catch (\Throwable $e) {
         // Config unavailable during early boot / install — skip module hooks.

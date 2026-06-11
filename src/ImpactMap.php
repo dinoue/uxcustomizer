@@ -84,6 +84,7 @@ class ImpactMap
      *
      * @param array{
      *   itemtype?:string,items_id?:int,
+     *   seeds?:list<array{itemtype:string,items_id:int}>,
      *   forward?:int,backward?:int,
      *   types?:string[]
      * } $scope
@@ -165,67 +166,88 @@ class ImpactMap
             }
         }
 
-        // ── 3. Optional scope: BOUNDED DIRECTED BFS from (itemtype, items_id) ──
-        // Walks `forward` hops along arrows OUT (impacts) and `backward` hops
-        // along arrows IN (impacted by), independently. Defaults match GLPI's
-        // native impact analysis depth (≈2 each). If the start node isn't in
-        // the data, return an empty graph (don't fall back to global — that
-        // surprised users in 1.6.0 by silently rendering hundreds of nodes).
-        if (!empty($scope['itemtype']) && !empty($scope['items_id'])) {
-            $start = $scope['itemtype'] . ':' . (int) $scope['items_id'];
+        // ── 3. Optional scope: BOUNDED DIRECTED BFS from one or more seeds ──
+        // Seeds come either from a single (itemtype, items_id) pair or from
+        // scope['seeds'] (e.g. all assets linked to a Ticket). Walks `forward`
+        // hops along arrows OUT (impacts) and `backward` hops along arrows IN
+        // (impacted by), independently, from EVERY seed. Defaults match GLPI's
+        // native impact analysis depth (≈2 each). Seeds absent from the impact
+        // data are injected as isolated nodes (a ticket asset without
+        // relations should still show on the triage map), and a scope that
+        // matches nothing returns an empty graph — never the global one.
+        $seeds = [];
+        if (!empty($scope['seeds']) && is_array($scope['seeds'])) {
+            foreach ($scope['seeds'] as $s) {
+                if (!empty($s['itemtype']) && !empty($s['items_id'])) {
+                    $seeds[(string) $s['itemtype'] . ':' . (int) $s['items_id']] = [
+                        'itemtype' => (string) $s['itemtype'],
+                        'items_id' => (int) $s['items_id'],
+                    ];
+                }
+            }
+        } elseif (!empty($scope['itemtype']) && !empty($scope['items_id'])) {
+            $key = $scope['itemtype'] . ':' . (int) $scope['items_id'];
+            $seeds[$key] = [
+                'itemtype' => (string) $scope['itemtype'],
+                'items_id' => (int) $scope['items_id'],
+            ];
+        }
+
+        if ($seeds !== []) {
             $forwardDepth  = isset($scope['forward'])  ? max(0, min(10, (int) $scope['forward']))  : 2;
             $backwardDepth = isset($scope['backward']) ? max(0, min(10, (int) $scope['backward'])) : 2;
 
-            if (!isset($nodeSet[$start])) {
-                // Start has no relations; return empty subgraph (NOT the full graph).
-                $totalNodes = 0;
-                $totalEdges = 0;
-                $nodeSet = [];
-            } else {
-                // Directed adjacency: forward edges = source → impacted.
-                $forward = []; // a => [b, …]  (a impacts b)
-                $reverse = []; // b => [a, …]  (a impacts b → b is impacted by a)
-                foreach ($rows as $r) {
-                    $a = $r['fs'] . ':' . $r['fi'];
-                    $b = $r['ts'] . ':' . $r['ti'];
-                    $forward[$a][$b] = true;
-                    $reverse[$b][$a] = true;
+            // Inject seeds missing from the impact data as isolated nodes.
+            foreach ($seeds as $key => $s) {
+                if (!isset($nodeSet[$key])) {
+                    $nodeSet[$key] = $s;
                 }
-
-                $keep = [$start => true];
-
-                // Forward BFS (this asset → what it impacts).
-                $layer = [$start];
-                for ($d = 0; $d < $forwardDepth && $layer; $d++) {
-                    $next = [];
-                    foreach ($layer as $cur) {
-                        foreach (array_keys($forward[$cur] ?? []) as $nb) {
-                            if (!isset($keep[$nb])) {
-                                $keep[$nb] = true;
-                                $next[] = $nb;
-                            }
-                        }
-                    }
-                    $layer = $next;
-                }
-
-                // Backward BFS (what impacts this asset → upstream).
-                $layer = [$start];
-                for ($d = 0; $d < $backwardDepth && $layer; $d++) {
-                    $next = [];
-                    foreach ($layer as $cur) {
-                        foreach (array_keys($reverse[$cur] ?? []) as $nb) {
-                            if (!isset($keep[$nb])) {
-                                $keep[$nb] = true;
-                                $next[] = $nb;
-                            }
-                        }
-                    }
-                    $layer = $next;
-                }
-
-                $nodeSet = array_intersect_key($nodeSet, $keep);
             }
+
+            // Directed adjacency: forward edges = source → impacted.
+            $forward = []; // a => [b, …]  (a impacts b)
+            $reverse = []; // b => [a, …]  (a impacts b → b is impacted by a)
+            foreach ($rows as $r) {
+                $a = $r['fs'] . ':' . $r['fi'];
+                $b = $r['ts'] . ':' . $r['ti'];
+                $forward[$a][$b] = true;
+                $reverse[$b][$a] = true;
+            }
+
+            $seedKeys = array_keys($seeds);
+            $keep = array_fill_keys($seedKeys, true);
+
+            // Forward BFS (seeds → what they impact).
+            $layer = $seedKeys;
+            for ($d = 0; $d < $forwardDepth && $layer; $d++) {
+                $next = [];
+                foreach ($layer as $cur) {
+                    foreach (array_keys($forward[$cur] ?? []) as $nb) {
+                        if (!isset($keep[$nb])) {
+                            $keep[$nb] = true;
+                            $next[] = $nb;
+                        }
+                    }
+                }
+                $layer = $next;
+            }
+
+            // Backward BFS (what impacts the seeds → upstream).
+            $layer = $seedKeys;
+            for ($d = 0; $d < $backwardDepth && $layer; $d++) {
+                $next = [];
+                foreach ($layer as $cur) {
+                    foreach (array_keys($reverse[$cur] ?? []) as $nb) {
+                        if (!isset($keep[$nb])) {
+                            $keep[$nb] = true;
+                            $next[] = $nb;
+                        }
+                    }
+                }
+                $layer = $next;
+            }
+
+            $nodeSet = array_intersect_key($nodeSet, $keep);
         }
 
         // ── 4. Filter by itemtype set (if requested) ─────────────────────────
@@ -353,6 +375,7 @@ class ImpactMap
                 'compoundId' => $compound,
                 'url'        => $url,
                 'title'      => $title,
+                'seed'       => isset($seeds[$key]),
                 'health'     => [
                     'level'      => $level,
                     'tickets'    => $tickets,
@@ -449,6 +472,50 @@ class ImpactMap
             }
         }
         return $out;
+    }
+
+    /** ITIL itemtype => its asset-link table + foreign key. */
+    public const ITIL_LINK_TABLES = [
+        'Ticket'  => ['table' => 'glpi_items_tickets',  'fk' => 'tickets_id'],
+        'Change'  => ['table' => 'glpi_changes_items',  'fk' => 'changes_id'],
+        'Problem' => ['table' => 'glpi_items_problems', 'fk' => 'problems_id'],
+    ];
+
+    /**
+     * Assets linked to an ITIL object (Ticket / Change / Problem), as BFS
+     * seeds. Itemtypes are whitelisted against knownItemtypes() — the same
+     * filter the ajax endpoint applies to direct scope params.
+     *
+     * @return list<array{itemtype:string,items_id:int}>
+     */
+    public static function linkedAssetSeeds(string $itilType, int $id): array
+    {
+        global $DB;
+
+        $map = self::ITIL_LINK_TABLES[$itilType] ?? null;
+        if ($map === null || $id <= 0 || !$DB->tableExists($map['table'])) {
+            return [];
+        }
+
+        $known = self::knownItemtypes();
+        $seeds = [];
+        try {
+            foreach ($DB->request([
+                'SELECT' => ['itemtype', 'items_id'],
+                'FROM'   => $map['table'],
+                'WHERE'  => [$map['fk'] => $id],
+            ]) as $row) {
+                if (isset($known[$row['itemtype']])) {
+                    $seeds[] = [
+                        'itemtype' => (string) $row['itemtype'],
+                        'items_id' => (int) $row['items_id'],
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            return [];
+        }
+        return $seeds;
     }
 
     /**

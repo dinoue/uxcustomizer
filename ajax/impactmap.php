@@ -7,11 +7,18 @@
  * vis-network renderer. Read-only — does NOT mutate impact tables.
  *
  * Query params (all optional):
- *   itemtype  — restrict to the subgraph from this asset (with items_id)
- *   items_id  — paired with itemtype
- *   forward   — directed BFS hops along arrows OUT (impacts); 0..10, default 2
- *   backward  — directed BFS hops along arrows IN (impacted by); 0..10, default 2
- *   types[]   — filter nodes to these itemtypes (repeatable, e.g. ?types[]=Computer&types[]=Software)
+ *   itemtype      — restrict to the subgraph from this asset (with items_id)
+ *   items_id      — paired with itemtype
+ *   itil_itemtype — Ticket|Change|Problem: subgraph seeded by ALL assets
+ *   itil_items_id   linked to this ITIL object (pair) — used by the ITIL tab
+ *   forward       — directed BFS hops along arrows OUT (impacts); 0..10, default 2
+ *   backward      — directed BFS hops along arrows IN (impacted by); 0..10, default 2
+ *   types[]       — filter nodes to these itemtypes (repeatable)
+ *
+ * Rights model (per scope):
+ *   org-wide (no scope) — config UPDATE (the Setup page audience)
+ *   asset scope         — READ on that asset
+ *   itil scope          — READ on that Ticket/Change/Problem
  *
  * Response: { ok: bool, error?: string, data?: {nodes,edges,compounds,meta} }
  *
@@ -31,11 +38,6 @@ header('Content-Type: application/json; charset=utf-8');
 
 Session::checkLoginUser();
 
-// The impact analysis itself isn't gated on a specific right in GLPI core
-// (it's a side-tab on assets, gated by the asset's READ). For our admin-side
-// map page we keep the same bar as the rest of the config UI: super-admin.
-Session::checkRight('config', UPDATE);
-
 $plugin = new Plugin();
 if (!$plugin->isInstalled('uxcustomizer') || !$plugin->isActivated('uxcustomizer')) {
     http_response_code(403);
@@ -49,15 +51,59 @@ if (!Config::isModuleEnabled('impactmap')) {
     exit;
 }
 
-$scope = [];
-if (!empty($_GET['itemtype']) && !empty($_GET['items_id'])) {
+function uxc_impact_deny(): void
+{
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'Access denied']);
+    exit;
+}
+
+$scope    = [];
+$hasScope = false;
+
+if (!empty($_GET['itil_itemtype']) && !empty($_GET['itil_items_id'])) {
+    // ── ITIL scope: seeds = all assets linked to the Ticket/Change/Problem ──
+    $itilType = (string) $_GET['itil_itemtype'];
+    $itilId   = (int) $_GET['itil_items_id'];
+    if (!isset(ImpactMap::ITIL_LINK_TABLES[$itilType]) || !class_exists($itilType)) {
+        uxc_impact_deny();
+    }
+    $itil = new $itilType();
+    // can(READ) covers entity restrictions and per-object visibility rules
+    // (e.g. a technician seeing only their group's tickets).
+    if (!$itil->can($itilId, READ)) {
+        uxc_impact_deny();
+    }
+    $scope['seeds'] = ImpactMap::linkedAssetSeeds($itilType, $itilId);
+    if ($scope['seeds'] === []) {
+        // No (mappable) assets on this object: empty graph, not an error.
+        echo json_encode(['ok' => true, 'data' => [
+            'nodes' => [], 'edges' => [], 'compounds' => [],
+            'meta'  => ['truncated' => false, 'total_nodes' => 0, 'total_edges' => 0],
+        ]]);
+        exit;
+    }
+    $hasScope = true;
+} elseif (!empty($_GET['itemtype']) && !empty($_GET['items_id'])) {
+    // ── Asset scope ──
     // Whitelist itemtype against our known list — prevents arbitrary class
     // strings reaching getTableForItemType().
     $known = ImpactMap::knownItemtypes();
-    if (isset($known[$_GET['itemtype']])) {
-        $scope['itemtype'] = (string) $_GET['itemtype'];
-        $scope['items_id'] = (int)    $_GET['items_id'];
+    if (!isset($known[$_GET['itemtype']])) {
+        uxc_impact_deny();
     }
+    $itemtype = (string) $_GET['itemtype'];
+    $itemId   = (int) $_GET['items_id'];
+    $item     = class_exists($itemtype) ? new $itemtype() : null;
+    if (!($item instanceof CommonDBTM) || !$item->can($itemId, READ)) {
+        uxc_impact_deny();
+    }
+    $scope['itemtype'] = $itemtype;
+    $scope['items_id'] = $itemId;
+    $hasScope = true;
+}
+
+if ($hasScope) {
     // BFS depths: numeric, clamp to [0..10] so a hostile or fat-fingered URL
     // can't make us BFS the entire org. ImpactMap::getGraph re-clamps to be safe.
     if (isset($_GET['forward'])) {
@@ -66,6 +112,9 @@ if (!empty($_GET['itemtype']) && !empty($_GET['items_id'])) {
     if (isset($_GET['backward'])) {
         $scope['backward'] = max(0, min(10, (int) $_GET['backward']));
     }
+} else {
+    // ── Org-wide view (no scope): Setup-page audience only ──
+    Session::checkRight('config', UPDATE);
 }
 if (!empty($_GET['types']) && is_array($_GET['types'])) {
     $known = ImpactMap::knownItemtypes();
