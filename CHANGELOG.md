@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-06-16
+
+### Security
+- **SEC-1 (Medium) — entity isolation on the Impact Map.** `ImpactMap::getGraph()` now filters every resulting node through GLPI's `getEntitiesRestrictCriteria()` for the session's active entities, so the BFS neighborhood and ITIL seed expansion can no longer surface item names or health from entities the user can't access. The guard fails closed (drops nodes it can't prove access to) and applies to every scope (org-wide, asset, ITIL). This was latent under 1.9.0's super-admin-only gate but became live in 2.0.0, which lets technicians reach the endpoint with per-asset/per-ITIL `READ`. From the 2026-06-16 security review; see `SECURITY.md` for the full disposition (SEC-2 kept as defense-in-depth, SEC-3 already resolved by 2.0.0).
+
 ## [2.0.0] - 2026-06-10
 
 ### Added

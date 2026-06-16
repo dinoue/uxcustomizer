@@ -259,6 +259,22 @@ class ImpactMap
             );
         }
 
+        // ── 4b. Entity-access filtering (SEC-1) ──────────────────────────────
+        // Drop any node the current session may not see. Applies to EVERY
+        // scope (org-wide, asset, ITIL): the raw impact tables aren't entity
+        // scoped by GLPI, and 2.0.0 lets non-super-admins reach this code.
+        if ($nodeSet !== []) {
+            $entByType = [];
+            foreach ($nodeSet as $n) {
+                $entByType[$n['itemtype']][] = $n['items_id'];
+            }
+            $allowedEnt = self::filterByEntity($entByType);
+            $nodeSet = array_filter(
+                $nodeSet,
+                static fn(array $n): bool => isset($allowedEnt[$n['itemtype']][$n['items_id']])
+            );
+        }
+
         $totalNodes = count($nodeSet);
         $totalEdges = count($rows);
 
@@ -408,6 +424,78 @@ class ImpactMap
     }
 
     /**
+     * Resolve the SQL table for an itemtype. The class owns this knowledge;
+     * falling back to getTableForItemType keeps us correct for plugin types.
+     * Returns null when the class/table can't be resolved.
+     */
+    private static function tableFor(string $itemtype): ?string
+    {
+        global $DB;
+
+        if ($itemtype === '' || !class_exists($itemtype)) {
+            return null;
+        }
+        try {
+            $table = method_exists($itemtype, 'getTable')
+                ? $itemtype::getTable()
+                : (\getTableForItemType($itemtype) ?: null);
+        } catch (\Throwable $e) {
+            return null;
+        }
+        return ($table && $DB->tableExists($table)) ? $table : null;
+    }
+
+    /**
+     * Entity-access guard (SEC-1). GLPI does NOT auto-scope the raw impact
+     * tables, so the BFS neighborhood / ITIL seed expansion could otherwise
+     * surface item names and health from entities the current session can't
+     * see. For every itemtype we keep only the ids that pass GLPI's own
+     * entity-restriction criteria for the session's active entities.
+     *
+     * Itemtypes whose table has no `entities_id` column are entity-agnostic
+     * and pass through unchanged. On query error we fail CLOSED (drop the
+     * ids) — better to under-show than to disclose across entities.
+     *
+     * @param array<string,int[]> $byType itemtype => ids present in the graph
+     * @return array<string,array<int,bool>> itemtype => id => true (allowed)
+     */
+    private static function filterByEntity(array $byType): array
+    {
+        global $DB;
+
+        $allowed = [];
+        foreach ($byType as $itemtype => $ids) {
+            if (!is_string($itemtype) || $itemtype === '' || $ids === []) {
+                continue;
+            }
+            $ids   = array_values(array_unique(array_map('intval', $ids)));
+            $table = self::tableFor($itemtype);
+
+            // No resolvable table, or no entity concept → not entity-restricted.
+            if ($table === null || !$DB->fieldExists($table, 'entities_id')) {
+                foreach ($ids as $id) {
+                    $allowed[$itemtype][$id] = true;
+                }
+                continue;
+            }
+
+            $crit = \getEntitiesRestrictCriteria($table, '', '', true);
+            try {
+                foreach ($DB->request([
+                    'SELECT' => ['id'],
+                    'FROM'   => $table,
+                    'WHERE'  => array_merge(['id' => $ids], $crit),
+                ]) as $row) {
+                    $allowed[$itemtype][(int) $row['id']] = true;
+                }
+            } catch (\Throwable $e) {
+                // Fail closed: prove access or don't disclose.
+            }
+        }
+        return $allowed;
+    }
+
+    /**
      * Resolve display names in batches: one query per itemtype.
      *
      * @param array<string,int[]> $byType  itemtype => list of ids
@@ -424,20 +512,8 @@ class ImpactMap
             }
             $ids = array_values(array_unique(array_map('intval', $ids)));
 
-            // Resolve the SQL table for this itemtype. The class itself owns
-            // this knowledge; falling back to getTableForItemType (static) keeps
-            // us correct for plugin itemtypes too.
-            $table = null;
-            if (class_exists($itemtype)) {
-                try {
-                    $table = method_exists($itemtype, 'getTable')
-                        ? $itemtype::getTable()
-                        : (\getTableForItemType($itemtype) ?: null);
-                } catch (\Throwable $e) {
-                    $table = null;
-                }
-            }
-            if (!$table || !$DB->tableExists($table)) {
+            $table = self::tableFor((string) $itemtype);
+            if ($table === null) {
                 continue;
             }
 
