@@ -51,9 +51,16 @@
     // Depth selects (only present in the on-asset tab; null on the config page).
     const fwdSel = root.querySelector('.uxc-impact-forward');
     const bwdSel = root.querySelector('.uxc-impact-backward');
-    // Auto-group-by-type checkbox + PNG export button.
+    // Auto-group-by-type checkbox + export buttons.
     const groupChk = root.querySelector('.uxc-impact-autogroup');
-    const btnExport = root.querySelector('.uxc-impact-export');
+    const btnExport = root.querySelector('.uxc-impact-export');         // PNG
+    const btnExportSvg = root.querySelector('.uxc-impact-export-svg');
+    const btnExportPdf = root.querySelector('.uxc-impact-export-pdf');
+    // Analysis modes + minimap (v2.1).
+    const btnWhatif = root.querySelector('.uxc-impact-whatif');
+    const btnPath = root.querySelector('.uxc-impact-path');
+    const btnMinimap = root.querySelector('.uxc-impact-minimap-toggle');
+    const miniEl = root.querySelector('.uxc-impact-minimap');
 
     let network = null;
     let nodesDS = null;
@@ -65,6 +72,8 @@
     let typeClusterIds = {}; // itemtype -> cluster id (auto-grouping)
     let clusterMeta = {}; // cluster id -> {name, color, count, kind: 'compound'|'type'}
     let typeStyles = {}; // itemtype -> {color, border, icon, label}
+    let nodeById = {};   // base node id -> raw payload (for style restore)
+    let mini = null;      // minimap vis.Network instance (v2.1)
 
     // iTop-style auto-grouping: when more than this many LOOSE nodes of the
     // same itemtype are on the canvas, collapse them into one type cluster.
@@ -75,6 +84,9 @@
         hiddenTypes: new Set(),  // itemtypes hidden via legend pills
         layoutMode: 'force',     // 'flow' (dagre LR) | 'force' | 'tree'
         search: '',              // current search query (lowercase)
+        mode: 'normal',          // 'normal' | 'whatif' | 'path' interaction mode
+        pathFirst: null,         // first picked base node id in path mode
+        analysisOn: false,       // an overlay (whatif/path) is currently applied
     };
 
     function setStatus(msg, level) {
@@ -358,6 +370,7 @@
      * server-side query).
      */
     function reload() {
+        destroyMinimap();
         if (network) {
             try { network.destroy(); } catch (e) { /* ignore */ }
             network = null;
@@ -369,6 +382,12 @@
         clusterMeta = {};
         state.hiddenTypes = new Set();
         state.search = '';
+        state.mode = 'normal';
+        state.pathFirst = null;
+        state.analysisOn = false;
+        if (btnWhatif) btnWhatif.classList.remove('active');
+        if (btnPath) btnPath.classList.remove('active');
+        if (canvas) canvas.classList.remove('uxc-impact-analyzing');
         if (searchEl) searchEl.value = '';
         if (sidePanel) sidePanel.classList.remove('uxc-impact-side--open');
         const emptyEl = root.querySelector('.uxc-impact-empty');
@@ -381,6 +400,8 @@
         allEdges = data.edges || [];
         compounds = data.compounds || [];
         const meta = data.meta || {};
+        nodeById = {};
+        allNodes.forEach(n => { nodeById[n.id] = n; });
 
         if (allNodes.length === 0) {
             root.querySelector('.uxc-impact-empty').style.display = '';
@@ -913,6 +934,367 @@
         document.body.removeChild(a);
     }
 
+    // ── Analysis overlays: what-if failure + path highlight (v2.1) ──────────
+    //
+    // Both overlays work by EMPHASIS, not destructive recolor: relevant
+    // top-level nodes go to full opacity with a coloured border, everything
+    // else dims to 0.15, and the connecting edges are recoloured. clearAnalysis
+    // restores defaults (health/seed/itemtype border, search-aware opacity).
+    // Base nodes hidden inside a collapsed cluster are represented by the
+    // cluster: if any member is in the highlight set, the cluster lights up.
+
+    function defaultBorder(payload) {
+        const level = payload && payload.health && payload.health.level;
+        const isSeed = payload && payload.seed;
+        return HEALTH_BORDER[level] || (isSeed ? '#111827' : (payload ? payload.border : '#6B7280'));
+    }
+
+    /** Base node ids currently inside cluster c. */
+    function membersOf(clusterId) {
+        try { return network.getNodesInCluster(clusterId); } catch (e) { return []; }
+    }
+
+    /** Top-level visible node ids: loose base nodes + active clusters. */
+    function visibleTops() {
+        const tops = [];
+        nodesDS.getIds().forEach(id => {
+            let path = [id];
+            try { path = network.findNode(id); } catch (e) { /* loose */ }
+            if (path.length === 1) tops.push({ id: id, cluster: false });
+        });
+        allClusterIds().forEach(cid => {
+            if (network.isCluster(cid)) tops.push({ id: cid, cluster: true });
+        });
+        return tops;
+    }
+
+    /**
+     * Paint an overlay. `hi` = Set of highlighted base ids, `origin` = Set of
+     * origin base ids (stronger). `edgeColor` recolours edges whose BOTH
+     * endpoints are highlighted; others dim.
+     */
+    function paintOverlay(hi, origin, edgeColor) {
+        const nodeUpdates = [];
+        visibleTops().forEach(top => {
+            const bases = top.cluster ? membersOf(top.id) : [top.id];
+            const isOrigin = bases.some(b => origin.has(b));
+            const isHi = isOrigin || bases.some(b => hi.has(b));
+            const opacity = isHi ? 1 : 0.15;
+            const border = isOrigin ? '#b91c1c' : (isHi ? edgeColor : null);
+            const bw = isOrigin ? 4 : (isHi ? 3 : 2);
+            if (top.cluster) {
+                const opts = { opacity: opacity, borderWidth: bw };
+                if (border) opts.color = { border: border };
+                try { network.clustering.updateClusteredNode(top.id, opts); } catch (e) { /* ignore */ }
+            } else {
+                const u = { id: top.id, opacity: opacity, borderWidth: bw };
+                if (border) u.color = { border: border };
+                nodeUpdates.push(u);
+            }
+        });
+        if (nodeUpdates.length) nodesDS.update(nodeUpdates);
+
+        const edgeUpdates = [];
+        edgesDS.forEach(e => {
+            const on = (hi.has(e.from) || origin.has(e.from)) && (hi.has(e.to) || origin.has(e.to));
+            edgeUpdates.push({
+                id: e.id,
+                color: { color: on ? edgeColor : '#e2e8f0' },
+                width: on ? 2.5 : 1,
+            });
+        });
+        if (edgeUpdates.length) edgesDS.update(edgeUpdates);
+        state.analysisOn = true;
+    }
+
+    /** Restore default node/edge styling (search-aware) after an overlay. */
+    function clearAnalysis() {
+        if (!state.analysisOn || !nodesDS) { state.analysisOn = false; return; }
+        const ql = state.search.toLowerCase();
+        const nodeUpdates = [];
+        nodesDS.forEach(n => {
+            const payload = nodeById[n.id];
+            const op = ql ? ((n._name || '').toLowerCase().indexOf(ql) !== -1 ? 1 : 0.15) : 1;
+            nodeUpdates.push({
+                id: n.id,
+                opacity: op,
+                borderWidth: defaultBorderWidth(payload),
+                color: { border: defaultBorder(payload) },
+            });
+        });
+        nodesDS.update(nodeUpdates);
+        allClusterIds().forEach(cid => {
+            if (!network.isCluster(cid)) return;
+            const m = clusterMeta[cid];
+            try {
+                network.clustering.updateClusteredNode(cid, {
+                    opacity: 1, borderWidth: 2,
+                    color: { border: '#111827', background: (m && m.color) || '#6B7280' },
+                });
+            } catch (e) { /* ignore */ }
+        });
+        const edgeUpdates = [];
+        edgesDS.forEach(e => edgeUpdates.push({ id: e.id, color: { color: '#94a3b8' }, width: 1.5 }));
+        edgesDS.update(edgeUpdates);
+        labelAllClusterEdges();
+        state.analysisOn = false;
+    }
+
+    function defaultBorderWidth(payload) {
+        const level = payload && payload.health && payload.health.level;
+        const isSeed = payload && payload.seed;
+        return (HEALTH_BORDER[level] || isSeed) ? 3 : 2;
+    }
+
+    // ── What-if failure simulation ──────────────────────────────────────────
+    // If the chosen CI fails, everything reachable by following impact arrows
+    // OUT (it impacts → they're affected) lights up red.
+
+    function simulateFailure(originId) {
+        const fwd = {};
+        allEdges.forEach(e => { (fwd[e.from] = fwd[e.from] || []).push(e.to); });
+        const affected = new Set();
+        let layer = [originId];
+        while (layer.length) {
+            const next = [];
+            layer.forEach(cur => {
+                (fwd[cur] || []).forEach(nb => {
+                    if (nb !== originId && !affected.has(nb)) { affected.add(nb); next.push(nb); }
+                });
+            });
+            layer = next;
+        }
+        const hi = new Set(affected);
+        const origin = new Set([originId]);
+        paintOverlay(hi, origin, '#d63939');
+        const name = (nodeById[originId] && nodeById[originId].name) || originId;
+        setStatus(affected.size + ' ' + t('affected_if_fails', 'affected if this fails') + ' — ' + name, 'info');
+    }
+
+    // ── Path highlighting ───────────────────────────────────────────────────
+    // Pick two nodes; BFS the UNDIRECTED graph for a shortest chain and light
+    // it. First pick is remembered; second pick computes + draws.
+
+    function pathPick(id) {
+        if (state.pathFirst === null) {
+            state.pathFirst = id;
+            clearAnalysis();
+            paintOverlay(new Set(), new Set([id]), '#2563eb');
+            const name = (nodeById[id] && nodeById[id].name) || id;
+            setStatus(t('path_from', 'Path from') + ' ' + name + ' — ' + t('path_pick2', 'pick a second node'), 'info');
+            return;
+        }
+        const a = state.pathFirst, b = id;
+        state.pathFirst = null;
+        if (a === b) { clearAnalysis(); setStatus('', ''); return; }
+
+        const adj = {};
+        allEdges.forEach(e => {
+            (adj[e.from] = adj[e.from] || []).push(e.to);
+            (adj[e.to] = adj[e.to] || []).push(e.from);
+        });
+        const prev = {}; prev[a] = a;
+        let layer = [a], found = false;
+        while (layer.length && !found) {
+            const next = [];
+            for (const cur of layer) {
+                for (const nb of (adj[cur] || [])) {
+                    if (!(nb in prev)) { prev[nb] = cur; if (nb === b) { found = true; break; } next.push(nb); }
+                }
+                if (found) break;
+            }
+            layer = next;
+        }
+        if (!(b in prev)) {
+            clearAnalysis();
+            setStatus(t('no_path', 'No path between those two nodes'), 'error');
+            return;
+        }
+        const chain = new Set();
+        let cur = b;
+        while (cur !== a) { chain.add(cur); cur = prev[cur]; }
+        chain.add(a);
+        paintOverlay(chain, new Set([a, b]), '#2563eb');
+        setStatus(t('path_len', 'Path length') + ': ' + (chain.size - 1), 'info');
+    }
+
+    // ── Mode switching (normal / whatif / path) ─────────────────────────────
+
+    function setMode(mode) {
+        state.mode = (state.mode === mode) ? 'normal' : mode;
+        state.pathFirst = null;
+        clearAnalysis();
+        setStatus('', '');
+        if (sidePanel) sidePanel.classList.remove('uxc-impact-side--open');
+        [[btnWhatif, 'whatif'], [btnPath, 'path']].forEach(([btn, m]) => {
+            if (btn) btn.classList.toggle('active', state.mode === m);
+        });
+        if (canvas) canvas.classList.toggle('uxc-impact-analyzing', state.mode !== 'normal');
+        if (state.mode === 'whatif') {
+            setStatus(t('whatif_hint', 'Click a CI to see what fails with it'), 'info');
+        } else if (state.mode === 'path') {
+            setStatus(t('path_hint', 'Click two CIs to trace the path between them'), 'info');
+        }
+    }
+
+    // ── SVG export (vector, editable / Visio-importable) ────────────────────
+    // Reconstructed from node positions + the model — every shape/line/label
+    // is a separate SVG element, so it opens editable in Visio/Illustrator
+    // (Device42 parity), without bundling any library.
+
+    function exportSvg() {
+        if (!network || !nodesDS) return;
+        const ids = nodesDS.getIds();
+        let pos;
+        try { pos = network.getPositions(ids); } catch (e) { return; }
+        const W = id => {
+            const n = nodesDS.get(id);
+            const label = String((n && n._name) || id);
+            return Math.max(70, Math.min(190, label.length * 7.5 + 30));
+        };
+        const H = 38;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        ids.forEach(id => {
+            const p = pos[id]; if (!p) return;
+            minX = Math.min(minX, p.x - W(id) / 2); maxX = Math.max(maxX, p.x + W(id) / 2);
+            minY = Math.min(minY, p.y - H / 2);    maxY = Math.max(maxY, p.y + H / 2);
+        });
+        if (!isFinite(minX)) return;
+        const pad = 40;
+        const vbW = (maxX - minX) + pad * 2, vbH = (maxY - minY) + pad * 2;
+        const ox = -minX + pad, oy = -minY + pad;
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const parts = [];
+        parts.push('<?xml version="1.0" encoding="UTF-8"?>');
+        parts.push('<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.ceil(vbW) + '" height="' + Math.ceil(vbH) + '" viewBox="0 0 ' + Math.ceil(vbW) + ' ' + Math.ceil(vbH) + '">');
+        parts.push('<rect width="100%" height="100%" fill="#ffffff"/>');
+        // Edges first (under nodes).
+        allEdges.forEach(e => {
+            const a = pos[e.from], b = pos[e.to];
+            if (!a || !b) return;
+            parts.push('<line x1="' + (a.x + ox).toFixed(1) + '" y1="' + (a.y + oy).toFixed(1) +
+                '" x2="' + (b.x + ox).toFixed(1) + '" y2="' + (b.y + oy).toFixed(1) +
+                '" stroke="#94a3b8" stroke-width="1.5"/>');
+        });
+        ids.forEach(id => {
+            const p = pos[id]; if (!p) return;
+            const n = nodesDS.get(id);
+            const w = W(id);
+            const x = (p.x + ox - w / 2), y = (p.y + oy - H / 2);
+            const fill = (n && n.color && n.color.background) || '#9CA3AF';
+            const stroke = (n && n.color && n.color.border) || '#6B7280';
+            const fg = pickFontColor(fill);
+            parts.push('<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) +
+                '" height="' + H + '" rx="6" fill="' + fill + '" stroke="' + stroke + '" stroke-width="2"/>');
+            parts.push('<text x="' + (p.x + ox).toFixed(1) + '" y="' + (p.y + oy + 4).toFixed(1) +
+                '" text-anchor="middle" font-family="sans-serif" font-size="12" fill="' + fg + '">' +
+                esc((n && n._name) || id) + '</text>');
+        });
+        parts.push('</svg>');
+        triggerDownload(new Blob([parts.join('\n')], { type: 'image/svg+xml' }), 'svg');
+    }
+
+    // ── PDF export ──────────────────────────────────────────────────────────
+    // Dependency-free: open the rendered PNG in a print window; the user picks
+    // "Save as PDF". Keeps the bundle small (no PDF library).
+
+    function exportPdf() {
+        const dataUrl = pngDataUrl();
+        if (!dataUrl) return;
+        const w = window.open('', '_blank');
+        if (!w) return;
+        w.document.write(
+            '<html><head><title>Impact Map</title><style>@media print{@page{size:landscape}}' +
+            'body{margin:0}img{width:100%;height:auto}</style></head><body>' +
+            '<img src="' + dataUrl + '" onload="window.focus();window.print();"></body></html>'
+        );
+        w.document.close();
+    }
+
+    /** Composite the network canvas onto white; return a PNG data URL. */
+    function pngDataUrl() {
+        if (!network) return null;
+        let src;
+        try { src = network.canvas.frame.canvas; } catch (e) { return null; }
+        const out = document.createElement('canvas');
+        out.width = src.width; out.height = src.height;
+        const ctx = out.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, out.width, out.height);
+        ctx.drawImage(src, 0, 0);
+        return out.toDataURL('image/png');
+    }
+
+    function triggerDownload(blob, ext) {
+        const a = document.createElement('a');
+        const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+        a.download = 'impact-map-' + stamp + '.' + ext;
+        a.href = URL.createObjectURL(blob);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
+    // ── Mini-map overview inset ─────────────────────────────────────────────
+    // A second, non-interactive vis network sharing the SAME graph coordinate
+    // space (positions snapshotted from the main network). Its afterDrawing
+    // hook strokes the main viewport rectangle directly in graph coords — no
+    // conversion needed since both share the coordinate system. Click recentres.
+
+    function buildMinimap() {
+        if (!miniEl || !network) return;
+        destroyMinimap();
+        let pos;
+        try { pos = network.getPositions(nodesDS.getIds()); } catch (e) { return; }
+        const mNodes = [];
+        nodesDS.getIds().forEach(id => {
+            const p = pos[id]; if (!p) return;
+            const n = nodesDS.get(id);
+            mNodes.push({
+                id: id, x: p.x, y: p.y, fixed: true, shape: 'dot', size: 6,
+                color: (n && n.color && n.color.background) || '#9CA3AF',
+            });
+        });
+        const mEdges = allEdges.map((e, i) => ({ id: 'm' + i, from: e.from, to: e.to, color: { color: '#cbd5e1' }, width: 0.5 }));
+        mini = new vis.Network(miniEl, { nodes: new vis.DataSet(mNodes), edges: new vis.DataSet(mEdges) }, {
+            interaction: { dragNodes: false, dragView: false, zoomView: false, selectable: false, hover: false },
+            physics: false,
+            layout: { randomSeed: 116 },
+            nodes: { borderWidth: 0 },
+        });
+        mini.once('afterDrawing', () => { try { mini.fit(); } catch (e) {} });
+        mini.on('afterDrawing', ctx => {
+            try {
+                const c = network.getViewPosition();
+                const s = network.getScale();
+                const cv = network.canvas.frame.canvas;
+                const w = (cv.clientWidth || cv.width) / s;
+                const h = (cv.clientHeight || cv.height) / s;
+                ctx.save();
+                ctx.strokeStyle = '#2563eb';
+                ctx.lineWidth = 3 / mini.getScale();
+                ctx.strokeRect(c.x - w / 2, c.y - h / 2, w, h);
+                ctx.restore();
+            } catch (e) { /* ignore */ }
+        });
+        mini.on('click', params => {
+            try { network.moveTo({ position: params.pointer.canvas, animation: { duration: 300 } }); } catch (e) {}
+        });
+        miniEl.style.display = '';
+        if (btnMinimap) btnMinimap.classList.add('active');
+    }
+
+    function destroyMinimap() {
+        if (mini) { try { mini.destroy(); } catch (e) {} mini = null; }
+        if (miniEl) miniEl.style.display = 'none';
+        if (btnMinimap) btnMinimap.classList.remove('active');
+    }
+
+    function refreshMinimap() {
+        if (mini) { buildMinimap(); } // rebuild snapshot at current positions
+    }
+
     // ── Event wiring ────────────────────────────────────────────────────────
 
     function bindEvents() {
@@ -926,6 +1308,21 @@
 
         network.on('selectNode', params => {
             const id = params.nodes[0];
+
+            // Analysis modes intercept the click: pick a representative base
+            // node (a cluster → its first member) and run the overlay instead
+            // of opening the side panel.
+            if (state.mode === 'whatif') {
+                simulateFailure(representativeBase(id));
+                network.unselectAll();
+                return;
+            }
+            if (state.mode === 'path') {
+                pathPick(representativeBase(id));
+                network.unselectAll();
+                return;
+            }
+
             if (network.isCluster(id)) {
                 showClusterPanel(clusterMeta[id], id);
             } else {
@@ -933,7 +1330,9 @@
                 showNodePanel(node);
             }
         });
-        network.on('deselectNode', () => sidePanel.classList.remove('uxc-impact-side--open'));
+        network.on('deselectNode', () => {
+            if (state.mode === 'normal') sidePanel.classList.remove('uxc-impact-side--open');
+        });
 
         // Manual node moves are the user telling us where things belong —
         // persist so the arrangement survives reloads (ServiceNow behaviour).
@@ -968,6 +1367,21 @@
         if (btnExport) {
             btnExport.addEventListener('click', exportPng);
         }
+        if (btnExportSvg) {
+            btnExportSvg.addEventListener('click', exportSvg);
+        }
+        if (btnExportPdf) {
+            btnExportPdf.addEventListener('click', exportPdf);
+        }
+        if (btnWhatif) {
+            btnWhatif.addEventListener('click', () => setMode('whatif'));
+        }
+        if (btnPath) {
+            btnPath.addEventListener('click', () => setMode('path'));
+        }
+        if (btnMinimap) {
+            btnMinimap.addEventListener('click', () => { mini ? destroyMinimap() : buildMinimap(); });
+        }
         if (btnFit) {
             btnFit.addEventListener('click', () => network.fit({ animation: { duration: 400 } }));
         }
@@ -979,6 +1393,19 @@
                 applySearch(searchEl.value.trim());
             });
         }
+        // Keep the minimap viewport rectangle live as the main view moves.
+        network.on('dragEnd', () => { if (mini) mini.redraw(); });
+        network.on('zoom', () => { if (mini) mini.redraw(); });
+        network.on('animationFinished', () => { if (mini) mini.redraw(); });
+    }
+
+    /** A representative base node id for a click target (cluster → a member). */
+    function representativeBase(id) {
+        if (network.isCluster(id)) {
+            const m = membersOf(id);
+            return m.length ? m[0] : id;
+        }
+        return id;
     }
 
     function showNodePanel(node) {

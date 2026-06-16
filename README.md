@@ -62,6 +62,10 @@ Org-wide topology view (Faddom-style) of GLPI's native impact relations. Compoun
 - **Search** — type a name; non-matching nodes fade to 15% opacity (the first match is focused).
 - **Collapse groups / Expand all / Fit / Export PNG** — re-cluster, open all groups, zoom to fit, or download the current view as an image.
 - **Layout selector** — **Flow** (left-right layered via dagre — the same algorithm and look as GLPI's native Impact Analysis), **Force** (organic physics), or **Tree** (top-down hierarchical). The on-asset tab defaults to Flow; the org-wide view defaults to Force. Switching re-lays out in place.
+- **What-if failure simulation** — toggle on, click a CI; everything it impacts (downstream) lights up red with an "N affected" count. Pure client-side, no new data.
+- **Path highlighting** — toggle on, click two CIs; the shortest dependency chain between them is highlighted and the rest dims.
+- **Mini-map** — toggleable overview inset with a live viewport rectangle; click to recentre.
+- **Export** — PNG (raster), **SVG** (editable vector, opens in Visio), or PDF (print view).
 - **Auto-group types** — collapses loose nodes into one dashed cluster per itemtype ("Computer (14)") when a type exceeds 8 nodes. On by default in the org-wide view.
 
 **Health overlay** — nodes with open tickets or a silent inventory agent (>2 days) get an amber/red status border; the side panel shows open-ticket count and agent last-seen. Signals come from native `glpi_items_tickets` and `glpi_agents` in batched queries.
@@ -108,10 +112,10 @@ Produces `dist/glpi-uxcustomizer-<VERSION>.tar.bz2`, excluding everything listed
 2. Push this repository to `github.com/bacus99/uxcustomizer` (must be public).
 3. Tag and publish the build:
    ```bash
-   git tag -a 2.0.1 -m "Release 2.0.1"
+   git tag -a 2.1.0 -m "Release 2.1.0"
    git push --tags
-   gh release create 2.0.1 dist/glpi-uxcustomizer-2.0.1.tar.bz2 \
-       --title "2.0.1" --notes-from-tag
+   gh release create 2.1.0 dist/glpi-uxcustomizer-2.1.0.tar.bz2 \
+       --title "2.1.0" --notes-from-tag
    ```
 4. Verify every URL in `plugin.xml` resolves (logo, homepage, issues, readme, and the `download_url`).
 5. Submit to the [GLPI plugin catalog](https://plugins.glpi-project.org/) by opening a Pull Request to [pluginsGLPI/data](https://github.com/pluginsGLPI/data) adding your `plugin.xml` URL to `xml/plugins.json`.

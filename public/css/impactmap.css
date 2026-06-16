@@ -94,12 +94,43 @@
     white-space: nowrap;
 }
 
-/* Active state for the Tree/Force layout toggle (Bootstrap "active" is for
-   nav items, not outline buttons — give it a clear visual). */
+/* Active state for outline buttons (layout toggle, minimap). */
 .uxc-impact-toolbar .btn.active {
     background: var(--tblr-primary, #206bc4);
     color: #fff;
     border-color: var(--tblr-primary, #206bc4);
+}
+
+/* Analysis-mode active buttons keep their semantic colour when toggled on. */
+.uxc-impact-toolbar .uxc-impact-whatif.active {
+    background: var(--tblr-danger, #d63939);
+    color: #fff;
+    border-color: var(--tblr-danger, #d63939);
+}
+.uxc-impact-toolbar .uxc-impact-path.active {
+    background: var(--tblr-primary, #2563eb);
+    color: #fff;
+    border-color: var(--tblr-primary, #2563eb);
+}
+
+/* In an analysis mode, the canvas cursor signals "pick a node". */
+.uxc-impact-canvas.uxc-impact-analyzing {
+    cursor: crosshair;
+}
+
+/* ── Mini-map overview inset ──────────────────────────────────────────── */
+.uxc-impact-minimap {
+    position: absolute;
+    left: 0.5rem;
+    bottom: 0.5rem;
+    width: 200px;
+    height: 140px;
+    background: var(--uxc-impact-card-bg, #fff);
+    border: 1px solid var(--uxc-impact-border, #e2e8f0);
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+    overflow: hidden;
+    z-index: 5;
 }
 
 /* ── Stage (canvas + side panel) ──────────────────────────────────────── */

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-06-16
+
+### Added
+- **What-if failure simulation** — a toolbar mode: click any CI and everything reachable by following impact arrows OUT (what it impacts) lights up red, with the count ("N affected if this fails") in the status line. Pure client-side BFS over the existing edges — instant, no new data. Works with collapsed groups (a member's failure lights its cluster).
+- **Path highlighting** — a toolbar mode: click two CIs and the shortest dependency chain between them is highlighted (BFS over the undirected edge set) while everything else dims; "No path" when they're unconnected.
+- **Mini-map overview** — a toggleable inset (bottom-left) showing the whole graph with a live rectangle for the current viewport; click it to recentre. Shares the main graph's coordinate space, so it stays aligned across Flow/Force/Tree layouts.
+- **SVG and PDF export** — alongside the existing PNG: **SVG** is reconstructed from node positions as discrete shapes/lines/labels, so it opens editable in Visio/Illustrator (Device42 parity), with no bundled library; **PDF** opens a print view of the rendered map to "Save as PDF". Export is now a PNG / SVG / PDF button group.
+
 ## [2.0.1] - 2026-06-16
 
 ### Security

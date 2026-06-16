@@ -148,9 +148,28 @@ class ImpactMapTab extends CommonGLPI
             . '<i class="ti ti-arrows-maximize me-1"></i>' . __('Expand all', 'uxcustomizer') . '</button>';
         echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-fit">'
             . '<i class="ti ti-focus-2 me-1"></i>' . __('Fit', 'uxcustomizer') . '</button>';
-        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-export"'
-            . ' title="' . htmlspecialchars(__('Download the current view as a PNG image', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
-            . '<i class="ti ti-photo-down me-1"></i>' . __('Export PNG', 'uxcustomizer') . '</button>';
+        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-minimap-toggle"'
+            . ' title="' . htmlspecialchars(__('Toggle the overview mini-map', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
+            . '<i class="ti ti-map-2 me-1"></i>' . __('Mini-map', 'uxcustomizer') . '</button>';
+
+        // Analysis modes (v2.1): what-if failure + path tracing.
+        echo '<button type="button" class="btn btn-sm btn-outline-danger uxc-impact-whatif"'
+            . ' title="' . htmlspecialchars(__('Click a CI to preview what fails if it goes down', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
+            . '<i class="ti ti-alert-triangle me-1"></i>' . __('What-if', 'uxcustomizer') . '</button>';
+        echo '<button type="button" class="btn btn-sm btn-outline-primary uxc-impact-path"'
+            . ' title="' . htmlspecialchars(__('Click two CIs to trace the path between them', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
+            . '<i class="ti ti-route me-1"></i>' . __('Path', 'uxcustomizer') . '</button>';
+
+        // Export group: PNG (raster), SVG (editable/Visio), PDF (print).
+        echo '<div class="btn-group btn-group-sm" role="group">';
+        echo '<button type="button" class="btn btn-outline-secondary uxc-impact-export"'
+            . ' title="' . htmlspecialchars(__('Download as PNG image', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
+            . '<i class="ti ti-photo-down me-1"></i>PNG</button>';
+        echo '<button type="button" class="btn btn-outline-secondary uxc-impact-export-svg"'
+            . ' title="' . htmlspecialchars(__('Download as editable SVG (opens in Visio)', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">SVG</button>';
+        echo '<button type="button" class="btn btn-outline-secondary uxc-impact-export-pdf"'
+            . ' title="' . htmlspecialchars(__('Open a print view to save as PDF', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">PDF</button>';
+        echo '</div>';
         // Layout mode. "Flow" = dagre LR, the same layered look as GLPI's
         // native Impact Analysis — default here so the tab feels familiar.
         echo '<div class="d-inline-flex align-items-center ms-1">';
@@ -203,6 +222,7 @@ class ImpactMapTab extends CommonGLPI
         // Stage (canvas + side panel)
         echo '<div class="uxc-impact-stage">';
         echo '<div class="uxc-impact-canvas"></div>';
+        echo '<div class="uxc-impact-minimap" style="display:none"></div>';
         echo '<aside class="uxc-impact-side" aria-live="polite"></aside>';
         echo '<div class="uxc-impact-empty" style="display:none"><div>'
             . '<i class="ti ti-affiliate-off mb-2" style="font-size:2rem"></i><br>'
@@ -265,6 +285,13 @@ class ImpactMapTab extends CommonGLPI
             'today'        => __('today', 'uxcustomizer'),
             'days_ago'     => __('days ago', 'uxcustomizer'),
             'type_group'   => __('Type group', 'uxcustomizer'),
+            'affected_if_fails' => __('affected if this fails', 'uxcustomizer'),
+            'whatif_hint'  => __('Click a CI to see what fails with it', 'uxcustomizer'),
+            'path_hint'    => __('Click two CIs to trace the path between them', 'uxcustomizer'),
+            'path_from'    => __('Path from', 'uxcustomizer'),
+            'path_pick2'   => __('pick a second node', 'uxcustomizer'),
+            'path_len'     => __('Path length', 'uxcustomizer'),
+            'no_path'      => __('No path between those two nodes', 'uxcustomizer'),
         ];
     }
 }
