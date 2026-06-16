@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UX Customizer 1.0.0\n"
-"Report-Msgid-Bugs-To: https://github.com/bacus99/GLPI_UXCustomizer/issues\n"
+"Report-Msgid-Bugs-To: https://github.com/bacus99/uxcustomizer/issues\n"
 "POT-Creation-Date: 2026-06-01 00:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"

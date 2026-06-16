@@ -6,7 +6,7 @@ the plugin's security posture and the disposition of past security reviews.
 ## Reporting a vulnerability
 
 Open a private security advisory or an issue at
-<https://github.com/bacus99/GLPI_UXCustomizer/issues>. Please do not include
+<https://github.com/bacus99/uxcustomizer/issues>. Please do not include
 exploit details in a public issue until a fix is released.
 
 ## Controls in place

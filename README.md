@@ -30,7 +30,7 @@ New items always append at the bottom — a freshly installed plugin's menu entr
 
 ## Installation
 
-1. Download the latest release tarball from the [Releases page](https://github.com/bacus99/GLPI_UXCustomizer/releases) and extract it into your GLPI `plugins/` directory — the folder **must** be named `uxcustomizer`:
+1. Download the latest release tarball from the [Releases page](https://github.com/bacus99/uxcustomizer/releases) and extract it into your GLPI `plugins/` directory — the folder **must** be named `uxcustomizer`:
    ```
    <glpi>/plugins/uxcustomizer/
    ```
@@ -105,7 +105,7 @@ Produces `dist/glpi-uxcustomizer-<VERSION>.tar.bz2`, excluding everything listed
    ```powershell
    Invoke-WebRequest https://www.gnu.org/licenses/gpl-3.0.txt -OutFile LICENSE
    ```
-2. Push this repository to `github.com/bacus99/GLPI_UXCustomizer` (must be public).
+2. Push this repository to `github.com/bacus99/uxcustomizer` (must be public).
 3. Tag and publish the build:
    ```bash
    git tag -a 2.0.1 -m "Release 2.0.1"
@@ -118,7 +118,7 @@ Produces `dist/glpi-uxcustomizer-<VERSION>.tar.bz2`, excluding everything listed
 
 ## Contributing
 
-Issues and pull requests are welcome at [github.com/bacus99/GLPI_UXCustomizer](https://github.com/bacus99/GLPI_UXCustomizer/issues). Translations: the template is `locales/uxcustomizer.pot` (target languages `en_GB`, `fr_FR`).
+Issues and pull requests are welcome at [github.com/bacus99/uxcustomizer](https://github.com/bacus99/uxcustomizer/issues). Translations: the template is `locales/uxcustomizer.pot` (target languages `en_GB`, `fr_FR`).
 
 ## License
 

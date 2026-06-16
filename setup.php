@@ -86,7 +86,7 @@ function plugin_version_uxcustomizer(): array
         'version'      => PLUGIN_UXCUSTOMIZER_VERSION,
         'author'       => 'Christian Bernard',
         'license'      => 'GPL-3.0-or-later',
-        'homepage'     => 'https://github.com/bacus99/GLPI_UXCustomizer',
+        'homepage'     => 'https://github.com/bacus99/uxcustomizer',
         'requirements' => [
             'glpi' => [
                 'min' => PLUGIN_UXCUSTOMIZER_MIN_GLPI_VERSION,
