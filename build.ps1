@@ -38,13 +38,20 @@ New-Item -ItemType Directory -Path $dist -Force | Out-Null
 $xd = @()
 $xf = @()
 foreach ($p in $ignore) {
-    if ($p -match '[\\/]') {
-        $xd += $p.TrimEnd('/').Replace('/', '\')
-    } elseif ($p -like '*.*' -or $p -like '*?*') {
-        $xf += $p
+    $t = $p.Trim()
+    if ($t -eq '') { continue }
+    if ($t -match '[\\/]') {
+        # Path-bearing entry → directory path exclude only.
+        $xd += $t.TrimEnd('/').Replace('/', '\')
     } else {
-        $xd += $p
-        $xf += $p
+        # A bare name can be a directory (.git, dist, node_modules) OR a file
+        # / glob (*.swp, CLAUDE.md, RELEASE_NOTES*.md). The old heuristic keyed
+        # off a dot, which misfiled DOT-DIRECTORIES like `.git` as files — so
+        # robocopy /XF never matched the directory and the whole .git tree
+        # shipped. Add every bare entry to BOTH lists; robocopy silently
+        # ignores the one that doesn't match.
+        $xd += $t
+        $xf += $t
     }
 }
 
@@ -58,6 +65,40 @@ $xd += $dist       # dist
 $rcArgs = @($PSScriptRoot, $stage, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NP') + (@('/XD') + $xd) + (@('/XF') + $xf)
 & robocopy @rcArgs | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "robocopy failed with code $LASTEXITCODE" }
+
+# Authoritative prune pass. robocopy's bare-name /XD and mid-name glob /XF
+# matching proved unreliable (the whole .git tree shipped), and so did
+# Get-ChildItem -Filter for dot-directories like `.git`. So we match on the
+# entry NAME with PowerShell's -like, which is predictable. This is the real
+# exclusion guarantee — robocopy above is just the first cheap pass.
+$nameGlobs = @()
+foreach ($p in $ignore) {
+    $t = $p.Trim()
+    if ($t -eq '') { continue }
+    if ($t -match '[\\/]') {
+        # Path-relative entry — remove that exact stage path.
+        $target = Join-Path $stage ($t.TrimEnd('/').Replace('/', '\'))
+        if (Test-Path -LiteralPath $target) {
+            Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    } else {
+        $nameGlobs += $t
+    }
+}
+# Every .glpiignore target (.git, dist, CLAUDE.md, RELEASE_NOTES*.md, dot-files
+# …) lives at the repo TOP LEVEL, so match top-level stage children by name
+# with -like (predictable, unlike robocopy/Get-ChildItem -Filter) and remove
+# them. Top-level only — avoids deep-recursion path-length errors under the
+# long OneDrive base path that silently aborted the earlier attempts.
+foreach ($child in @(Get-ChildItem -LiteralPath $stage -Force -ErrorAction SilentlyContinue)) {
+    $drop = $false
+    foreach ($g in $nameGlobs) {
+        if ($child.Name -like $g) { $drop = $true; break }
+    }
+    if ($drop -and (Test-Path -LiteralPath $child.FullName)) {
+        Remove-Item -LiteralPath $child.FullName -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 
 Push-Location $work
 try {
