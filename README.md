@@ -53,7 +53,7 @@ Pick a **profile**, drag the top-level menu items into the order you want — ch
 Choose the colors (primary, accent, page background, sidebar background/text), name the palette, and **Save**. This writes a GLPI theme; it appears in every user's **My Settings → Color palette** picker (and the **Setup → General** site default). It is **opt-in** — it does **not** override anyone's chosen theme. Tick **"Also generate a matching dark theme"** to publish a dark variant alongside the light one.
 
 ### Tab Order
-Pick an **asset type** (Computer, Monitor, Network equipment, Peripheral, Phone, Printer, Software, Rack, Enclosure, PDU, Cluster). Drag its tabs into the desired order, and use the **eye icon** to hide a tab from the asset page (hidden tabs stay listed here, greyed out, so you can restore them). The order applies **globally** to all users. **Reset** restores GLPI's default order and shows all tabs again.
+Pick an **asset type** (Computer, Monitor, Network equipment, Peripheral, Phone, Printer, Software, Rack, Enclosure, PDU, Cluster). Drag its tabs into the desired order, and use the **eye icon** to hide a tab from the asset page (hidden tabs stay listed here, greyed out, so you can restore them). The order applies **globally to all standard (central-interface) users** — editing is super-admin only, but the result is what everyone sees. Simplified/self-service (`helpdesk`-interface) profiles are excluded (they don't use these asset forms). **Reset** restores GLPI's default order and shows all tabs again.
 
 ### Impact Map
 Org-wide topology view (Faddom-style) of GLPI's native impact relations. Compounds (the named groups you create on an asset's Impact Analysis tab) start **collapsed** — each shows as a single colored node with the member count, e.g. "Management Servers (3)". Double-click a group to expand. Single-click any node to see details in the side panel with a link to open it in GLPI.
@@ -112,10 +112,10 @@ Produces `dist/glpi-uxcustomizer-<VERSION>.tar.bz2`, excluding everything listed
 2. Push this repository to `github.com/bacus99/uxcustomizer` (must be public).
 3. Tag and publish the build:
    ```bash
-   git tag -a 2.1.0 -m "Release 2.1.0"
+   git tag -a 2.1.1 -m "Release 2.1.1"
    git push --tags
-   gh release create 2.1.0 dist/glpi-uxcustomizer-2.1.0.tar.bz2 \
-       --title "2.1.0" --notes-from-tag
+   gh release create 2.1.1 dist/glpi-uxcustomizer-2.1.1.tar.bz2 \
+       --title "2.1.1" --notes-from-tag
    ```
 4. Verify every URL in `plugin.xml` resolves (logo, homepage, issues, readme, and the `download_url`).
 5. Submit to the [GLPI plugin catalog](https://plugins.glpi-project.org/) by opening a Pull Request to [pluginsGLPI/data](https://github.com/pluginsGLPI/data) adding your `plugin.xml` URL to `xml/plugins.json`.

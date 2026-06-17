@@ -42,8 +42,18 @@ if ($class === null) {
     exit;
 }
 
-// ── get: read-only, any logged-in user (the reorder runs for everyone) ──
+// ── get: read-only, any logged-in user on the CENTRAL interface ──
+// The reorder applies to everyone EXCEPT simplified/self-service profiles
+// (GLPI profile interface 'helpdesk'). Those users don't normally reach the
+// central asset forms anyway; returning an empty order makes the exclusion
+// explicit and guaranteed rather than incidental. Missing/unknown interface
+// defaults to central (preserves the apply-to-everyone behaviour).
 if ($action === 'get') {
+    $interface = $_SESSION['glpiactiveprofile']['interface'] ?? 'central';
+    if ($interface !== 'central') {
+        echo json_encode(['ok' => true, 'data' => ['order' => [], 'hidden' => []]]);
+        exit;
+    }
     $s = TabOrder::getSettings($class);
     echo json_encode(['ok' => true, 'data' => ['order' => $s['order'], 'hidden' => $s['hidden']]]);
     exit;

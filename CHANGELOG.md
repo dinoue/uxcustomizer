@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-06-16
+
+### Changed
+- **Tab Order now skips self-service users.** The saved tab order is still global and still applies to all standard (central-interface) users, but it is no longer served to profiles on the simplified/self-service (`helpdesk`) interface. The reorder endpoint checks the requesting user's active profile interface and returns an empty order for non-central profiles. In practice self-service users never reached the central asset forms where these tabs live, so this makes an incidental exclusion explicit and guaranteed. Editing remains super-admin only.
+
 ## [2.1.0] - 2026-06-16
 
 ### Added
