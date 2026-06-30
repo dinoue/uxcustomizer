@@ -14,7 +14,6 @@ use GlpiPlugin\Uxcustomizer\Config;
 use GlpiPlugin\Uxcustomizer\Lifecycle;
 use GlpiPlugin\Uxcustomizer\MenuOrder;
 use GlpiPlugin\Uxcustomizer\TabOrder;
-use GlpiPlugin\Uxcustomizer\ImpactMap;
 
 include('../../../inc/includes.php');
 
@@ -44,8 +43,6 @@ if (isset($_POST['save_modules'])) {
     }
 
     Config::setModuleEnabled('taborder', !empty($_POST['module_taborder_enabled']));
-    Config::setModuleEnabled('dashboard', !empty($_POST['module_dashboard_enabled']));
-    Config::setModuleEnabled('impactmap', !empty($_POST['module_impactmap_enabled']));
 
     Session::addMessageAfterRedirect(__('Modules updated.', 'uxcustomizer'), true, INFO);
     Html::redirect($CFG_GLPI['root_doc'] . '/plugins/uxcustomizer/front/config.php?tab=general');
@@ -71,9 +68,6 @@ $asset = static function (string $rel) use ($rootDoc): string {
 };
 
 echo '<link rel="stylesheet" type="text/css" href="' . $asset('public/css/uxcustomizer.css') . '">';
-if ($activeTab === 'impactmap' && Config::isModuleEnabled('impactmap')) {
-    echo '<link rel="stylesheet" type="text/css" href="' . $asset('public/css/impactmap.css') . '">';
-}
 echo '<div class="container-fluid mt-3">';
 echo '<h2><i class="ti ti-adjustments me-2"></i>' . __('UX Customizer', 'uxcustomizer') . '</h2>';
 
@@ -84,7 +78,6 @@ $tabs = [
     'palette'   => ['ti-palette',          __('Color Palette', 'uxcustomizer')],
     'taborder'  => ['ti-layout-navbar',    __('Tab Order', 'uxcustomizer')],
     'lifecycle' => ['ti-recycle',          __('Lifecycle', 'uxcustomizer')],
-    'impactmap' => ['ti-affiliate',        __('Impact Map', 'uxcustomizer')],
 ];
 echo '<ul class="nav nav-tabs mt-3" role="tablist">';
 foreach ($tabs as $key => [$icon, $label]) {
@@ -106,8 +99,6 @@ if ($activeTab === 'general') {
         'menuorder' => [__('Menu Order', 'uxcustomizer'), __('Reorder the left navigation menu per profile.', 'uxcustomizer')],
         'palette'   => [__('Color Palette', 'uxcustomizer'), __('Add a selectable custom color theme.', 'uxcustomizer')],
         'taborder'  => [__('Tab Order', 'uxcustomizer'), __('Reorder the tabs on asset detail pages (Computer, Printer, …).', 'uxcustomizer')],
-        'dashboard' => [__('Computer Dashboard', 'uxcustomizer'), __('Add a card-based "Dashboard" tab to the Computer form.', 'uxcustomizer')],
-        'impactmap' => [__('Impact Map', 'uxcustomizer'), __('Org-wide impact topology with collapsible groups (vis-network).', 'uxcustomizer')],
     ] as $mod => [$label, $desc]) {
         $checked = Config::isModuleEnabled($mod) ? ' checked' : '';
         echo '<label class="form-check form-switch">';
@@ -328,89 +319,6 @@ if ($activeTab === 'lifecycle') {
     echo '</form>';
 }
 
-// ── Impact Map ──────────────────────────────────────────────────────────────
-if ($activeTab === 'impactmap') {
-    if (!Config::isModuleEnabled('impactmap')) {
-        echo '<div class="alert alert-warning">' . __('The Impact Map module is disabled (see General).', 'uxcustomizer') . '</div>';
-    } else {
-        echo '<div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>'
-            . __('Read-only org-wide view of GLPI\'s native impact relations. Compounds (named groups) start collapsed — double-click a group to expand. Click a legend pill to filter that itemtype. Type in the search box to dim non-matching nodes. Toggle "Tree layout" to lay out as a directed waterfall. Built from glpi_impactrelations / glpi_impactitems / glpi_impactcompounds — no new tables.', 'uxcustomizer')
-            . '</div>';
-
-        echo '<div class="uxc-impact-page" id="uxc-impact">';
-
-        // Toolbar
-        echo '<div class="uxc-impact-toolbar">';
-        echo '<input type="text" class="form-control form-control-sm uxc-impact-search"'
-            . ' placeholder="' . htmlspecialchars(__('Search node by name…', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">';
-        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-collapse-all">'
-            . '<i class="ti ti-arrows-minimize me-1"></i>' . __('Collapse groups', 'uxcustomizer') . '</button>';
-        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-expand-all">'
-            . '<i class="ti ti-arrows-maximize me-1"></i>' . __('Expand all', 'uxcustomizer') . '</button>';
-        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-fit">'
-            . '<i class="ti ti-focus-2 me-1"></i>' . __('Fit', 'uxcustomizer') . '</button>';
-        echo '<button type="button" class="btn btn-sm btn-outline-secondary uxc-impact-minimap-toggle"'
-            . ' title="' . htmlspecialchars(__('Toggle the overview mini-map', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
-            . '<i class="ti ti-map-2 me-1"></i>' . __('Mini-map', 'uxcustomizer') . '</button>';
-
-        // Analysis modes (v2.1): what-if failure + path tracing.
-        echo '<button type="button" class="btn btn-sm btn-outline-danger uxc-impact-whatif"'
-            . ' title="' . htmlspecialchars(__('Click a CI to preview what fails if it goes down', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
-            . '<i class="ti ti-alert-triangle me-1"></i>' . __('What-if', 'uxcustomizer') . '</button>';
-        echo '<button type="button" class="btn btn-sm btn-outline-primary uxc-impact-path"'
-            . ' title="' . htmlspecialchars(__('Click two CIs to trace the path between them', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
-            . '<i class="ti ti-route me-1"></i>' . __('Path', 'uxcustomizer') . '</button>';
-
-        // Export group: PNG (raster), SVG (editable/Visio), PDF (print).
-        echo '<div class="btn-group btn-group-sm" role="group">';
-        echo '<button type="button" class="btn btn-outline-secondary uxc-impact-export"'
-            . ' title="' . htmlspecialchars(__('Download as PNG image', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">'
-            . '<i class="ti ti-photo-down me-1"></i>PNG</button>';
-        echo '<button type="button" class="btn btn-outline-secondary uxc-impact-export-svg"'
-            . ' title="' . htmlspecialchars(__('Download as editable SVG (opens in Visio)', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">SVG</button>';
-        echo '<button type="button" class="btn btn-outline-secondary uxc-impact-export-pdf"'
-            . ' title="' . htmlspecialchars(__('Open a print view to save as PDF', 'uxcustomizer'), ENT_QUOTES, 'UTF-8') . '">PDF</button>';
-        echo '</div>';
-        // Layout mode. Default Force here: the org-wide graph can be large
-        // and disconnected, where the organic layout reads better; "Flow"
-        // (dagre LR — native Impact Analysis look) is one click away.
-        echo '<div class="d-inline-flex align-items-center ms-1">';
-        echo '<label class="form-label small mb-0 me-1" for="uxc-impact-layoutsel">' . __('Layout', 'uxcustomizer') . '</label>';
-        echo '<select id="uxc-impact-layoutsel" class="form-select form-select-sm uxc-impact-layoutsel" style="width:auto">';
-        echo '<option value="force" selected>' . __('Force (organic)', 'uxcustomizer') . '</option>';
-        echo '<option value="flow">' . __('Flow (left-right)', 'uxcustomizer') . '</option>';
-        echo '<option value="tree">' . __('Tree (top-down)', 'uxcustomizer') . '</option>';
-        echo '</select>';
-        echo '</div>';
-
-        // Auto-group by type (iTop-style). Default ON for the org-wide view —
-        // this is where same-type hairballs happen.
-        echo '<label class="form-check form-switch d-inline-flex align-items-center mb-0 ms-2"'
-            . ' title="' . htmlspecialchars(sprintf(__('Collapse loose nodes into one group per type when a type has more than %d nodes', 'uxcustomizer'), 8), ENT_QUOTES, 'UTF-8') . '">';
-        echo '<input class="form-check-input uxc-impact-autogroup" type="checkbox" checked>';
-        echo '<span class="form-check-label small ms-1">' . __('Auto-group types', 'uxcustomizer') . '</span>';
-        echo '</label>';
-
-        echo '<span class="uxc-impact-status"></span>';
-        echo '</div>';
-
-        // Legend (filled by JS)
-        echo '<div class="uxc-impact-legend"></div>';
-
-        // Stage
-        echo '<div class="uxc-impact-stage">';
-        echo '<div class="uxc-impact-canvas"></div>';
-        echo '<div class="uxc-impact-minimap" style="display:none"></div>';
-        echo '<aside class="uxc-impact-side" aria-live="polite"></aside>';
-        echo '<div class="uxc-impact-empty" style="display:none"><div><i class="ti ti-affiliate-off mb-2" style="font-size:2rem"></i><br>'
-            . __('No impact relations found. Open any asset\'s Impact Analysis tab to start linking items.', 'uxcustomizer')
-            . '</div></div>';
-        echo '</div>';
-
-        echo '</div>'; // uxc-impact-page
-    }
-}
-
 echo '</div></div>'; // card-body / card
 echo '</div>';       // container
 
@@ -439,51 +347,5 @@ echo '<script src="' . $asset('public/js/Sortable.min.js') . '"></script>';
 echo '<script src="' . $asset('public/js/menuorder.js') . '"></script>';
 echo '<script src="' . $asset('public/js/palette.js') . '"></script>';
 echo '<script src="' . $asset('public/js/tabconfig.js') . '"></script>';
-
-// Impact Map (only when its tab is active). vis-network is bundled locally
-// (same reason as SortableJS — no CDN, GLPI doesn't expose a stable path).
-if ($activeTab === 'impactmap' && Config::isModuleEnabled('impactmap')) {
-    echo '<script>window.UxcImpactConfig = ' . json_encode([
-        'dataUrl' => $rootDoc . '/plugins/uxcustomizer/ajax/impactmap.php',
-        'i18n'    => [
-            'loading'      => __('Loading…', 'uxcustomizer'),
-            'failed'       => __('Failed to load:', 'uxcustomizer'),
-            'nodes'        => __('nodes', 'uxcustomizer'),
-            'relations'    => __('relations', 'uxcustomizer'),
-            'truncated'    => __('truncated to ', 'uxcustomizer'),
-            'type'         => __('Type', 'uxcustomizer'),
-            'id'           => __('ID', 'uxcustomizer'),
-            'group'        => __('Group', 'uxcustomizer'),
-            'members'      => __('Members', 'uxcustomizer'),
-            'expand'       => __('Expand', 'uxcustomizer'),
-            'open_in_glpi' => __('Open in GLPI', 'uxcustomizer'),
-            'conn'         => __('conn.', 'uxcustomizer'),
-            'layout_tree'  => __('Tree layout', 'uxcustomizer'),
-            'layout_force' => __('Force layout', 'uxcustomizer'),
-            'show_type'    => __('Click to show', 'uxcustomizer'),
-            'hide_type'    => __('Click to hide', 'uxcustomizer'),
-            'health'       => __('Health', 'uxcustomizer'),
-            'health_ok'    => __('good', 'uxcustomizer'),
-            'health_warn'  => __('warning', 'uxcustomizer'),
-            'health_crit'  => __('critical', 'uxcustomizer'),
-            'open_tickets' => __('Open tickets', 'uxcustomizer'),
-            'agent_seen'   => __('Agent seen', 'uxcustomizer'),
-            'today'        => __('today', 'uxcustomizer'),
-            'days_ago'     => __('days ago', 'uxcustomizer'),
-            'type_group'   => __('Type group', 'uxcustomizer'),
-            'affected_if_fails' => __('affected if this fails', 'uxcustomizer'),
-            'whatif_hint'  => __('Click a CI to see what fails with it', 'uxcustomizer'),
-            'path_hint'    => __('Click two CIs to trace the path between them', 'uxcustomizer'),
-            'path_from'    => __('Path from', 'uxcustomizer'),
-            'path_pick2'   => __('pick a second node', 'uxcustomizer'),
-            'path_len'     => __('Path length', 'uxcustomizer'),
-            'no_path'      => __('No path between those two nodes', 'uxcustomizer'),
-        ],
-    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>';
-    echo '<script src="' . $asset('public/js/vis-network.min.js') . '"></script>';
-    // dagre powers the "Flow" (left-right layered) layout. Bundled locally.
-    echo '<script src="' . $asset('public/js/dagre.min.js') . '"></script>';
-    echo '<script src="' . $asset('public/js/impactmap.js') . '"></script>';
-}
 
 Html::footer();

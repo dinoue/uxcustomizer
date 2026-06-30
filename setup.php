@@ -13,13 +13,11 @@
  */
 
 use Glpi\Plugin\Hooks;
-use GlpiPlugin\Uxcustomizer\ComputerDashboard;
 use GlpiPlugin\Uxcustomizer\Config;
-use GlpiPlugin\Uxcustomizer\ImpactMapTab;
 use GlpiPlugin\Uxcustomizer\Menu;
 use GlpiPlugin\Uxcustomizer\MenuOrder;
 
-define('PLUGIN_UXCUSTOMIZER_VERSION',          '2.1.1');
+define('PLUGIN_UXCUSTOMIZER_VERSION',          '3.0.0');
 define('PLUGIN_UXCUSTOMIZER_MIN_GLPI_VERSION', '11.0.0');
 define('PLUGIN_UXCUSTOMIZER_MAX_GLPI_VERSION', '11.0.99');
 
@@ -58,22 +56,10 @@ function plugin_init_uxcustomizer(): void
             $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['uxcustomizer'] = ['public/js/tabreorder.js'];
         }
 
-        // Computer Dashboard — adds a "Dashboard" tab to the Computer form.
-        // addtabon + registerClass is the GLPI 11 tab mechanism (NOT a 'tabs'
-        // hook). The tab lands after core tabs; use Tab Order to move it first.
-        if (Config::isModuleEnabled('dashboard')) {
-            Plugin::registerClass(ComputerDashboard::class, ['addtabon' => ['Computer']]);
-        }
-
-        // Impact Map — adds an "Impact Map" tab to asset forms (Computer,
-        // Appliance — coexists with GLPI's native "Impact Analysis" tab) AND
-        // to ITIL objects (Ticket, Change, Problem) where the map is seeded
-        // by the assets linked to the object: blast radius during triage.
-        if (Config::isModuleEnabled('impactmap')) {
-            Plugin::registerClass(ImpactMapTab::class, [
-                'addtabon' => array_merge(ImpactMapTab::ITEMTYPES, ImpactMapTab::ITIL_ITEMTYPES),
-            ]);
-        }
+        // NB (v3.0): the Computer Dashboard and the Impact Map moved to the
+        // dedicated `impact360` plugin. uxcustomizer now owns menu order, color
+        // palette, tab order, and the asset-retention policy (Lifecycle), which
+        // impact360's dashboard consumes when this plugin is active.
     } catch (\Throwable $e) {
         // Config unavailable during early boot / install — skip module hooks.
     }

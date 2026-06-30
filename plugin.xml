@@ -18,9 +18,9 @@ UX Customizer bundles super-admin interface customizations for GLPI 11 as indepe
 - <strong>Menu Order</strong> — drag-and-drop reorder of the left navigation menu, saved per profile. Uses the official redefine_menus hook; new plugins always appear at the bottom.<br />
 - <strong>Color Palette</strong> — define a custom color theme that users can select in My Settings (it does not override their choice); installs as a native GLPI palette.<br />
 - <strong>Tab Order</strong> — reorder and hide tabs on asset detail pages per itemtype.<br />
-- <strong>Computer Dashboard</strong> — card-based overview tab on the Computer form (hardware, health, lifecycle, tickets, contracts, activity).<br />
-- <strong>Impact Map</strong> — org-wide topology view of GLPI's native impact relations with collapsible groups, rendered with vis-network.<br /><br />
-Each module can be enabled or disabled independently. CSRF-compliant, PSR-4 autoloaded, GLPI 11 native.
+- <strong>Lifecycle</strong> — set an asset retention period (years) per Computer type, used to compute a retirement date.<br /><br />
+Each module can be enabled or disabled independently. CSRF-compliant, PSR-4 autoloaded, GLPI 11 native.<br />
+<em>Note: the Computer Dashboard and the Impact Map moved to the dedicated <strong>Impact360</strong> plugin in v3.0.</em>
          ]]></en>
          <fr><![CDATA[
 UX Customizer regroupe des personnalisations de l'interface GLPI 11 pour super-administrateurs sous forme de modules activables indépendamment.<br /><br />
@@ -28,9 +28,9 @@ UX Customizer regroupe des personnalisations de l'interface GLPI 11 pour super-a
 - <strong>Ordre du menu</strong> — réorganisation par glisser-déposer du menu de navigation, enregistrée par profil. Utilise le hook officiel redefine_menus ; les nouveaux plugins apparaissent toujours en bas.<br />
 - <strong>Palette de couleurs</strong> — définit un thème de couleurs personnalisé que les utilisateurs peuvent sélectionner dans Mes préférences (sans écraser leur choix) ; installé comme une palette GLPI native.<br />
 - <strong>Ordre des onglets</strong> — réorganisation et masquage des onglets des fiches d'inventaire par type.<br />
-- <strong>Tableau de bord Ordinateur</strong> — onglet de synthèse cartes sur la fiche Ordinateur (matériel, santé, cycle de vie, tickets, contrats, activité).<br />
-- <strong>Carte d'impact</strong> — vue topologique des relations d'impact natives de GLPI avec groupes repliables, rendue avec vis-network.<br /><br />
-Chaque module est activable indépendamment. Conforme CSRF, chargement PSR-4, compatible GLPI 11.
+- <strong>Cycle de vie</strong> — définit une durée de rétention (années) par type d'ordinateur, utilisée pour calculer une date de remplacement.<br /><br />
+Chaque module est activable indépendamment. Conforme CSRF, chargement PSR-4, compatible GLPI 11.<br />
+<em>Note : le Tableau de bord Ordinateur et la Carte d'impact ont été déplacés vers le plugin dédié <strong>Impact360</strong> en v3.0.</em>
          ]]></fr>
       </long>
    </description>
@@ -45,6 +45,11 @@ Chaque module est activable indépendamment. Conforme CSRF, chargement PSR-4, co
    </authors>
 
    <versions>
+      <version>
+         <num>3.0.0</num>
+         <compatibility>~11.0.0</compatibility>
+         <download_url>https://github.com/bacus99/uxcustomizer/releases/download/3.0.0/glpi-uxcustomizer-3.0.0.tar.bz2</download_url>
+      </version>
       <version>
          <num>2.1.1</num>
          <compatibility>~11.0.0</compatibility>
@@ -128,8 +133,7 @@ Chaque module est activable indépendamment. Conforme CSRF, chargement PSR-4, co
          <tag>theme</tag>
          <tag>colors</tag>
          <tag>customization</tag>
-         <tag>impact</tag>
-         <tag>topology</tag>
+         <tag>lifecycle</tag>
       </en>
       <fr>
          <tag>interface</tag>
@@ -137,8 +141,7 @@ Chaque module est activable indépendamment. Conforme CSRF, chargement PSR-4, co
          <tag>thème</tag>
          <tag>couleurs</tag>
          <tag>personnalisation</tag>
-         <tag>impact</tag>
-         <tag>topologie</tag>
+         <tag>cycle de vie</tag>
       </fr>
    </tags>
 

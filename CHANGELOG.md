@@ -5,6 +5,175 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-06-30
+
+### Changed — split: Impact Map + Computer Dashboard extracted to `impact360`
+
+uxcustomizer now focuses on **UI customization**: Menu Order, Color Palette, Tab
+Order, and the asset-retention **Lifecycle** policy. The **Impact Map** (with its
+health roll-up / Application Health board / observed-traffic overlay — the
+2.2.0–2.6.0 work) and the **Computer Dashboard** moved to the dedicated
+**[impact360](https://github.com/bacus99/impact360)** plugin.
+
+### Removed
+- **Impact Map** module: `ImpactMapTab`, `ImpactMap`, `ajax/impactmap.php`,
+  `front/portfolio.php`, the config-page "Impact Map" tab, and the bundled
+  `vis-network` / `dagre` assets + `impactmap.css`.
+- **Computer Dashboard** module: `ComputerDashboard`, its template, `dashboard.css`.
+- The `dashboard` and `impactmap` module toggles (General tab + install seeds).
+
+### Kept
+- **Menu Order**, **Color Palette**, **Tab Order**.
+- **Lifecycle** (asset retention policy + its editor under the Lifecycle tab) —
+  impact360's Computer Dashboard consumes it when uxcustomizer is active.
+
+### Migration
+After upgrading, the Impact Map and Dashboard tabs disappear from uxcustomizer;
+install **impact360** to regain them. No data loss — uxcustomizer's config table
+(including the retention policy) is untouched, and impact360 reads Lifecycle live.
+
+## [2.6.0] - 2026-06-30
+
+### Added — Application Health board / "wall of apps" (roll-up Phase 4)
+
+A portfolio view of **every Appliance as a health tile**, worst-first, each
+linking to that service's Impact Map. The SquaredUp landing screen — grounded in
+GLPI's CMDB + observed dependencies. Completes the roll-up arc (Phases 1-4).
+
+- **`front/portfolio.php`** — grid of service tiles colored by rolled-up health
+  (Critical / Warning / Healthy / No-data), each showing "N of M components
+  degraded" and "N dependencies at risk" (Phase 3). Read-only; **entity-scoped**
+  + `Appliance::canView()` gate, so a technician sees only services in their
+  entities. Gated by the `impactmap` module.
+- **`ImpactMap::portfolio($limit=200)`** — lists entity-visible Appliances and
+  rolls each up via `rollupHealth()`, sorted worst-first. Capped (per-appliance
+  roll-up runs a few batched queries each).
+- **Discoverability:** a button on the config page (admins) and an "All
+  applications →" link in every Appliance's roll-up banner (operational entry
+  from any one service).
+
+## [2.5.0] - 2026-06-30
+
+### Added — Dependency-aware health roll-up (roll-up Phase 3)
+
+The Appliance roll-up now considers not just its **members** but the CIs those
+members **depend on** (1 hop upstream), from native impact relations **and**
+observed netstat traffic. A green app member can still put the service at risk if
+the database it actually talks to is red — the dependency the app's owner never
+declared. This is the moat: SquaredUp rolls up *declared* dashboards; we roll up
+*discovered, dependency-aware* CIs.
+
+- **`ImpactMap::dependenciesOf()`** — direct upstream dependencies of the member
+  set: native `source → impacted` (member-as-impacted → source is a dependency)
+  plus observed netstat rows where a member computer's edge is `depends`
+  (outbound consumption). Members excluded; netstat side tableExists-guarded.
+- **`rollupHealth()`** gains `$withDeps = true`: dependency health folds into the
+  worst-of `level`, entity-scoped like members; worst-offender entries are tagged
+  `kind = member | dependency`. Returns new `deps_total` / `deps_degraded`.
+- **Appliance banner** now reads e.g. *"Critical · 2 of 7 components degraded ·
+  1 dependency at risk · Worst: scormon02 (critical), ScorScomSQLP01 (dependency,
+  warning)"*, with the dependency offenders linked + tagged.
+- Backward compatible: `rollupHealth(..., false)` restores Phase 1 behaviour;
+  per-node and compound health (Phase 1) unchanged.
+
+## [2.4.0] - 2026-06-30
+
+### Added — Explore mode: progressive expand-on-click map (roll-up Phase 2)
+
+The Impact Map item tab now opens **collapsed to the focused CI + its immediate
+neighbours**, and **clicking a node reveals its next hop** — you walk the graph
+instead of rendering the whole mesh. This is the SquaredUp "click develops a
+node" interaction, and it's the structural fix for sprawl on hub hosts (a
+monitoring/SQL server that touches everything).
+
+- **"Explore" toolbar toggle**, ON by default on the item tab. Inert on the
+  org-wide config page (no seed to expand from) — behaviour there is unchanged.
+- Collapsed view = seed(s) ∪ their direct neighbours. Each visible-but-unexpanded
+  node shows a **"+N"** cue for how many neighbours are still hidden; click to
+  reveal them. "Expand all" reveals the whole graph; "Collapse" returns to the
+  seed.
+- Visibility is **client-side** over the already-fetched payload (no extra
+  fetches); the visible subset is **re-laid-out with dagre on each expand** and
+  re-fit. Clustering and saved-position persistence are disabled while exploring
+  (the two paradigms don't mix) — toggle Explore off for the grouped overview.
+- Fully guarded: with Explore off, render/layout/clustering behave exactly as
+  before.
+
+## [2.3.0] - 2026-06-30
+
+### Added — Application health roll-up (SquaredUp-style), Phase 1
+
+One aggregated health status for an **Appliance** (business service), rolled up
+worst-of from its members — the capability SquaredUp leads with, but grounded in
+GLPI's CMDB + observed dependencies rather than hand-declared dashboards.
+
+- **`ImpactMap::rollupHealth(itemtype, items_id)`** — for an Appliance, reads its
+  members (`glpi_appliances_items`), reuses the **same batched signals** as the
+  per-node overlay (open tickets + agent staleness) via the new shared
+  `healthLevel()` helper, and aggregates worst-of → `{ level, total, counts,
+  worst[] }`. Entity-access guarded (same as `getGraph`); no-op for non-Appliance.
+- **Appliance Impact Map tab** now shows a **roll-up banner**: overall status
+  (Healthy / Warning / Critical), "N of M components degraded", and links to the
+  worst offenders. Server-rendered — no extra AJAX.
+- **Compound boxes are health-coloured** in the map: `getGraph` rolls member
+  health up into each native compound (`compounds[].health`), and the client
+  borders the box red/amber — the map reads as a health hierarchy.
+- Reuses existing health logic (no schema, no new endpoint). Per-node overlay
+  behaviour is unchanged (the inline level logic was extracted into `healthLevel`,
+  not altered).
+
+Deliberately **not** in this phase (tracked in `GLPI-Shared/ideas/application-health-rollup.md`):
+progressive expand-on-click map (Phase 2, also the sprawl fix), dependency-aware
+roll-up (Phase 3), portfolio "wall of apps" (Phase 4).
+
+## [2.2.0] - 2026-06-22
+
+### Added
+- **Impact Map: observed-traffic overlay from netstatconnections.** The Impact
+  Map now optionally overlays *observed* TCP/UDP dependency edges discovered by
+  the [netstatconnections](../NetstatConnections) plugin on top of GLPI's native
+  impact relations — turning the dagre/flow view into a live dependency map
+  without leaving uxcustomizer.
+  - **`ImpactMap::netstatEdges()`** reads `glpi_plugin_netstatconnections_connections`
+    (resolved + active/locked rows), aggregates to one edge per directed node
+    pair, and carries a **port label** (from the plugin's ports table, mirroring
+    its `getPortLabel`: name, else `PROTO PORT`) and a **weight** normalised per
+    host from `seen_count`. Direction follows the plugin's semantics
+    (`impacts` = Computer→remote, `depends` = remote→Computer; falls back to
+    `conn_direction`). Fully guarded by `tableExists` → **no-op when the plugin
+    isn't installed**.
+  - Observed edges join the same `$rows` list as native relations, so they
+    participate in node collection, the bounded BFS scope, and **entity-access
+    filtering** identically — the overlay never widens what the session may see.
+  - Edge rendering: **confirmed** edges (present in native impact tables) stay
+    solid; edges seen **only** in traffic render **dashed/blue**; both inherit
+    the port label and weight-driven thickness.
+  - New **"Observed traffic"** toolbar toggle on the item tab (on by default).
+    Endpoint accepts `&include_observed=0|1` (default on); `ajax/impactmap.php`
+    passes it through to `getGraph()`.
+  - **Bounded overlay (anti-sprawl):** observed edges are folded in at **depth 1
+    only** (they do NOT drive BFS expansion) and **capped to the top 20 by weight
+    per node** (`MAX_OBSERVED_PER_NODE`), so a chatty host (e.g. a monitoring
+    server that talks to everything) can't explode the graph and shrink "Fit".
+  - **Port labels are a toggle, OFF by default** ("Port labels" switch) — always-on
+    labels collided into unreadable text on dense hosts. Toggling restyles edges
+    with no refetch. Labels render as opaque white pills (horizontal) so they stay
+    legible over thick/weighted edges instead of hiding under the line.
+  - **Outlier-robust "Fit"** — frames the dense core plus the focused CI rather
+    than zooming all the way out to a couple of far-flung nodes (e.g. an SCCM/SCOM
+    host reached by one long edge). Stragglers stay reachable by panning.
+  - **Focused CI is never clustered** — the selected asset stays a distinct,
+    named node instead of being folded into an auto type-group ("Computer (N)")
+    or a compound. Selecting it now shows its own chain (server → DB instance →
+    management servers → SCOM) instead of an anonymous blob with aggregated
+    "N conn." edges.
+  - Read-only throughout — the overlay never writes to any impact or plugin table.
+
+### Removed
+- **Firewall security card** on the Computer Dashboard. It had no native GLPI
+  data source (always rendered "No data source"), so it added noise without
+  value. The security row is now Connectivity / Antivirus / Health (3-up grid).
+
 ## [2.1.1] - 2026-06-16
 
 ### Changed
