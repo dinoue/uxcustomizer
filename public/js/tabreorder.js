@@ -16,6 +16,12 @@
     // Supported asset form pages: basename(*.form.php) → itemtype slug.
     const FORM_RE = /\/([a-z0-9]+)\.form\.php(?:$|[?#])/i;
 
+    // List of supported itemtype slugs (must match TabOrder::ITEMTYPES in src/TabOrder.php).
+    const SUPPORTED_ITEMTYPES = new Set([
+        'computer', 'monitor', 'networkequipment', 'peripheral', 'phone',
+        'printer', 'software', 'rack', 'enclosure', 'pdu', 'cluster'
+    ]);
+
     function rootDoc() {
         if (window.CFG_GLPI && window.CFG_GLPI.root_doc) return window.CFG_GLPI.root_doc;
         // Fallback: derive from this script's own src.
@@ -26,7 +32,9 @@
 
     function currentSlug() {
         const m = location.pathname.match(FORM_RE);
-        return m ? m[1].toLowerCase() : null;
+        const slug = m ? m[1].toLowerCase() : null;
+        // Only return slug if it's a supported itemtype; suppress requests for non-asset pages like config.
+        return slug && SUPPORTED_ITEMTYPES.has(slug) ? slug : null;
     }
 
     function tabBar() {

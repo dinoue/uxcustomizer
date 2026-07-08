@@ -37,8 +37,10 @@ $rawType  = (string) ($_REQUEST['itemtype'] ?? '');
 $class    = TabOrder::resolveItemtype($rawType);
 
 if ($class === null) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'unsupported itemtype']);
+    // Unsupported itemtype (e.g., 'config' on config pages). Return gracefully with empty order
+    // instead of 400, since external scripts (workflow-refresh.js) may call this for any page.
+    http_response_code(200);
+    echo json_encode(['ok' => true, 'data' => ['order' => [], 'hidden' => []]]);
     exit;
 }
 

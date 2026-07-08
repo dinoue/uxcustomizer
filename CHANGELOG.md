@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2026-07-08
+
+### Fixed
+- **Tab Order**: `ajax/taborder.php` now answers unsupported itemtypes with an
+  HTTP 200 and an empty order/hidden payload instead of a 400 — external
+  scripts may probe it on any page (e.g. config pages), and the 400 polluted
+  the browser console and PHP logs.
+- **Tab Order**: `tabreorder.js` only issues the order request on the
+  supported asset form pages (whitelist mirroring `TabOrder::ITEMTYPES`),
+  suppressing needless AJAX calls on non-asset `*.form.php` pages.
+
+### Added
+- `CLAUDE.md` development guide (points to the shared GLPI-Shared conventions)
+  and the fleet-standard CI lint gate (`.github/workflows/lint.yml`: `php -l`
+  + SQL guard). Neither ships in the release tarball.
+
 ## [3.0.0] - 2026-06-30
 
 ### Changed — split: Impact Map + Computer Dashboard extracted to `impact360`
